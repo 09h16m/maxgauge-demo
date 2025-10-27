@@ -41,32 +41,7 @@ export default function IssueMap({ blocks }: IssueMapProps) {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-[#030712]">Issue Map</h3>
-        
-        {/* 범례 */}
-        <div className="flex items-center gap-4 text-xs">
-          {/* CPU Usage */}
-          <div className="flex items-center gap-1">
-            <span className="text-[#6a7282]">CPU Usage</span>
-            <div 
-              className="w-8 h-3 rounded-[2px]"
-              style={{
-                background: 'linear-gradient(90deg, #38bdf8 0%, #34d399 100%)'
-              }}
-            />
-          </div>
-          
-          {/* 이상 감지 */}
-          <div className="flex items-center gap-1">
-            <span className="text-[#6a7282]">이상 감지</span>
-            <div className="w-3 h-3 rounded-[2px] bg-[#fe9a00]" />
-          </div>
-          
-          {/* 리포트 */}
-          <div className="flex items-center gap-1">
-            <span className="text-[#6a7282]">리포트</span>
-            <div className="w-3 h-3 rounded-[2px] bg-[#ff2056]" />
-          </div>
-        </div>
+
       </div>
       
       {/* 히트맵 그리드 (가로 형태: 32열 x 8행) */}
