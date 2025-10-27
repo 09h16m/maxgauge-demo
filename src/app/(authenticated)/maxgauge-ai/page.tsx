@@ -23,6 +23,13 @@ export default function MaxGaugeAIPage() {
     setSelectedBlockId(blockId);
   };
 
+  const handleResetCamera = () => {
+    // window 객체에 저장된 리셋 함수 호출
+    if ((window as any).__resetBlock3DCamera) {
+      (window as any).__resetBlock3DCamera();
+    }
+  };
+
   const selectedBlock = selectedBlockId !== null ? blocks.find(b => b.id === selectedBlockId) : null;
 
   return (
@@ -42,6 +49,7 @@ export default function MaxGaugeAIPage() {
           onBlocksChange={handleBlocksChange} 
           onBlockSelect={handleBlockSelect}
           selectedBlockId={selectedBlockId}
+          onResetCamera={handleResetCamera}
         />
       </div>
 
@@ -64,6 +72,7 @@ export default function MaxGaugeAIPage() {
         <SidePanel 
           selectedBlock={selectedBlock} 
           onBack={() => setSelectedBlockId(null)}
+          onResetCamera={handleResetCamera}
         />
       </div>
     </div>

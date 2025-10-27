@@ -7,37 +7,27 @@ import { BlockData } from './Block3D';
 interface SidePanelProps {
   selectedBlock?: BlockData | null;
   onBack?: () => void;
+  onResetCamera?: () => void;
 }
 
-export default function SidePanel({ selectedBlock, onBack }: SidePanelProps) {
+export default function SidePanel({ selectedBlock, onBack, onResetCamera }: SidePanelProps) {
   return (
     <div className="flex flex-col gap-4 items-end p-6 h-full">
       {/* 상단 도구바 - 선택된 블록이 없을 때만 표시 */}
       {!selectedBlock && (
       <div className="flex gap-3 items-center w-full">
         {/* 3D 뷰 아이콘 버튼 */}
-        <button className="bg-white flex items-center justify-center rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] w-8 h-8">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2.5L2.5 7.5V12.5L10 17.5L17.5 12.5V7.5L10 2.5Z" stroke="#1e2939" strokeWidth="1.5" strokeLinejoin="round"/>
-            <path d="M10 10L2.5 7.5M10 10L17.5 7.5M10 10V17.5" stroke="#1e2939" strokeWidth="1.5" strokeLinejoin="round"/>
-          </svg>
+        <button 
+          onClick={onResetCamera}
+          className="bg-white flex items-center justify-center rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] w-8 h-8 hover:bg-gray-50 transition-colors cursor-pointer"
+        >
+          <img 
+            src="/logos/view-in-ar.svg" 
+            alt="3D View Reset" 
+            className="w-5 h-5"
+          />
         </button>
 
-        {/* 회전 컨트롤 */}
-        <div className="flex rounded shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] overflow-hidden">
-          <button className="bg-white border-r border-[#e5e7eb] flex items-center justify-center p-2.5 w-8 h-8">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M16.25 10C16.25 13.4518 13.4518 16.25 10 16.25C6.54822 16.25 3.75 13.4518 3.75 10C3.75 6.54822 6.54822 3.75 10 3.75" stroke="#1e2939" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M10 2.5L12.5 5L10 7.5" stroke="#1e2939" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <button className="bg-white flex items-center justify-center p-2.5 w-8 h-8">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M3.75 10C3.75 6.54822 6.54822 3.75 10 3.75C13.4518 3.75 16.25 6.54822 16.25 10C16.25 13.4518 13.4518 16.25 10 16.25" stroke="#1e2939" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M10 17.5L7.5 15L10 12.5" stroke="#1e2939" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
 
         {/* 드롭다운 셀렉트 */}
         <div className="flex-1 bg-white rounded-md shadow-[0px_0px_16px_0px_rgba(3,7,18,0.08)] h-8">

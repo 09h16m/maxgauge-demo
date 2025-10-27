@@ -328,13 +328,70 @@ interface Block3DProps {
   onBlocksChange?: (blocks: BlockData[]) => void;
   onBlockSelect?: (blockId: number | null) => void;
   selectedBlockId?: number | null;
+  onResetCamera?: () => void;
 }
 
-export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId }: Block3DProps) {
+export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId, onResetCamera }: Block3DProps) {
   const [blocks, setBlocks] = useState<BlockData[]>([]);
   const [hoveredBlockId, setHoveredBlockId] = useState<number | null>(null);
   const onBlocksChangeRef = useRef(onBlocksChange);
   const connectionsRef = useRef<Map<number, number[]>>(new Map()); // RAC 연결 정보 저장
+  const orbitControlsRef = useRef<any>(null);
+
+  // 초기 카메라 위치 저장
+  const initialCameraPosition = useMemo(() => new THREE.Vector3(-32, 32, 32), []);
+  const initialTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+  const initialZoom = 48; // 초기 zoom 값
+
+  // 카메라 리셋 함수
+  useEffect(() => {
+    if (onResetCamera && orbitControlsRef.current) {
+      // 부모 컴포넌트에서 호출할 수 있도록 함수 전달
+      const resetCamera = () => {
+        if (orbitControlsRef.current) {
+          const controls = orbitControlsRef.current;
+          
+          // 카메라 위치, 타겟, 줌을 부드럽게 이동
+          const duration = 1000; // 1초
+          const startPosition = controls.object.position.clone();
+          const startTarget = controls.target.clone();
+          const startZoom = controls.object.zoom;
+          const startTime = Date.now();
+
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // easeInOutCubic
+            const t = progress < 0.5 
+              ? 4 * progress * progress * progress 
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+            // 카메라 위치 보간
+            controls.object.position.lerpVectors(startPosition, initialCameraPosition, t);
+            
+            // 타겟 위치 보간
+            controls.target.lerpVectors(startTarget, initialTarget, t);
+            
+            // 줌 보간
+            controls.object.zoom = THREE.MathUtils.lerp(startZoom, initialZoom, t);
+            controls.object.updateProjectionMatrix(); // 줌 변경 후 필수
+            
+            controls.update();
+
+            if (progress < 1) {
+              requestAnimationFrame(animate);
+            }
+          };
+
+          animate();
+        }
+      };
+
+      // 함수를 외부에서 호출할 수 있도록 window 객체에 임시 저장
+      (window as any).__resetBlock3DCamera = resetCamera;
+    }
+  }, [onResetCamera, initialCameraPosition, initialTarget]);
 
   // 최신 콜백 참조 유지
   useEffect(() => {
@@ -503,7 +560,7 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
             getBlockPosition={getBlockPosition}
           />
         </group>
-        <OrbitControls target={[0, 0, 0]} />
+        <OrbitControls ref={orbitControlsRef} target={[0, 0, 0]} />
       </Canvas>
     </div>
   );
