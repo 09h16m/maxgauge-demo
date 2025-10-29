@@ -5,6 +5,7 @@ import Block3D, { BlockData } from "@/components/ui/Block3D";
 import BlockStats from "@/components/ui/BlockStats";
 import SidePanel from "@/components/ui/SidePanel";
 import IssueMap from "@/components/ui/IssueMap";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useState, useEffect, useRef } from "react";
 
 export default function MaxGaugeAIPage() {
@@ -168,33 +169,50 @@ export default function MaxGaugeAIPage() {
       {/* Search 버튼과 Legend - 사이드 패널 좌측 상단 고정 */}
       <div className="absolute top-6 z-20 flex items-center gap-3" style={{ right: '448px' }}>
         {/* Search 버튼/검색창 */}
-        <div 
-          ref={searchContainerRef}
-          className={`bg-white rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] h-8 flex items-center transition-all duration-300 overflow-hidden ${
-            isSearchExpanded ? 'w-[240px]' : 'w-8'
-          }`}
-        >
-          <button 
-            onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-            className="flex items-center justify-center w-8 h-8 shrink-0 hover:bg-gray-50 rounded-md transition-colors cursor-pointer"
+        <div className="relative">
+          <div 
+            ref={searchContainerRef}
+            className={`bg-white rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] h-8 flex items-center transition-all duration-300 ease-in-out ${
+              isSearchExpanded ? 'w-[240px]' : 'w-8'
+            }`}
+            style={{ overflow: isSearchExpanded ? 'hidden' : 'visible' }}
           >
-            <img 
-              src="/search.svg" 
-              alt="Search" 
-              className="w-5 h-5"
-            />
-          </button>
-          
-          {isSearchExpanded && (
-            <input
-              type="text"
-              placeholder="인스턴스명으로 검색"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 h-full px-2 text-sm text-[#030712] placeholder:text-[#6A7282] focus:outline-none"
-              autoFocus
-            />
-          )}
+            {!isSearchExpanded ? (
+              <Tooltip content="인스턴스 검색" side="bottom">
+                <button 
+                  onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                  className="flex items-center justify-center w-8 h-8 shrink-0 hover:bg-gray-50 rounded-md transition-colors cursor-pointer"
+                >
+                  <img 
+                    src="/search.svg" 
+                    alt="Search" 
+                    className="w-5 h-5"
+                  />
+                </button>
+              </Tooltip>
+            ) : (
+              <>
+                <button 
+                  onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                  className="flex items-center justify-center w-8 h-8 shrink-0 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                >
+                  <img 
+                    src="/search.svg" 
+                    alt="Search" 
+                    className="w-5 h-5"
+                  />
+                </button>
+                <input
+                  type="text"
+                  placeholder="인스턴스명으로 검색"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 h-full px-2 text-sm text-[#030712] placeholder:text-[#6A7282] focus:outline-none"
+                  autoFocus
+                />
+              </>
+            )}
+          </div>
         </div>
 
         {/* Legend */}
@@ -226,16 +244,18 @@ export default function MaxGaugeAIPage() {
 
       {/* 3D 뷰 아이콘 버튼 - 사이드 패널 좌측 하단 고정 */}
       <div className="absolute bottom-6 z-20" style={{ right: '448px' }}>
-        <button 
-          onClick={handleResetCamera}
-          className="bg-white flex items-center justify-center rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] w-8 h-8 hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          <img 
-            src="/logos/view-in-ar.svg" 
-            alt="3D View Reset" 
-            className="w-5 h-5"
-          />
-        </button>
+        <Tooltip content="블록 화면 맞춤" side="top">
+          <button 
+            onClick={handleResetCamera}
+            className="bg-white flex items-center justify-center rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] w-8 h-8 hover:bg-gray-50 transition-colors cursor-pointer"
+          >
+            <img 
+              src="/logos/view-in-ar.svg" 
+              alt="3D View Reset" 
+              className="w-5 h-5"
+            />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

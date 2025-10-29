@@ -12,7 +12,11 @@ import { User, Settings, LogOut, HelpCircle, Search, Bell } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
-export default function GNB() {
+interface GNBProps {
+  variant?: "with-border" | "without-border";
+}
+
+export default function GNB({ variant = "with-border" }: GNBProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -29,7 +33,7 @@ export default function GNB() {
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200">
+    <nav className={`bg-white relative z-20 ${variant === "with-border" ? "border-b border-gray-200" : ""}`}>
       <div className="flex items-center justify-between px-8 h-14">
         {/* 왼쪽 영역: 로고 + 메뉴 */}
         <div className="flex items-center gap-6 h-14 flex-1">

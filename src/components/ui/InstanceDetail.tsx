@@ -228,13 +228,19 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // 현상 데이터
-  const issues = [
-    { text: '시퀀스 객체 이상 확인', time: '2025-10-13 07:31', color: '#FE9A00' },
-    { text: '대기시간 증가', time: '2025-10-13 08:14', color: '#FE9A00' },
-    { text: 'Active Session 증가', time: '2025-10-13 08:19', color: '#FE9A00' },
-    { text: '응답시간 지연', time: '2025-10-13 08:21', color: '#FB2C36' },
-  ];
+  // 선택한 인스턴스에 대한 이상 탐지 이력 데이터 (필터링된 리포트)
+  const instanceReports = useMemo(() => {
+    const serverName = `PRODRAC${block.id}P`;
+    return [
+      { id: 1, server: serverName, time: '2025-10-06 12:39', metric: 'SQL Elapsed Time', badge: '+3', selected: true },
+      { id: 2, server: serverName, time: '2025-10-04 07:55', metric: 'Active Session', badge: null, selected: false },
+      { id: 3, server: serverName, time: '2025-10-03 18:21', metric: 'Total Wait Time', badge: '+1', selected: false },
+      { id: 4, server: serverName, time: '2025-10-03 18:21', metric: 'SQL Elapsed Time', badge: null, selected: false },
+    ];
+  }, [block.id]);
+
+  // 표시할 리포트 개수 상태 (초기값 2개)
+  const [visibleReportsCount, setVisibleReportsCount] = useState(2);
 
   return (
     <div className="flex flex-col h-full">
@@ -306,33 +312,76 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
       {/* Instance Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col gap-6 p-5">
-          {/* 현상 */}
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-[#030712]">현상</h3>
-            <div className="flex flex-col gap-2 p-3 bg-white border border-[#e5e7eb] rounded-md">
-              {issues.map((issue, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div 
-                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: issue.color }}
-                  >
-                    <div className="w-2 h-2 rounded-full bg-white" />
+          {/* 이상 탐지 이력 */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between h-7">
+              <div className="flex items-center gap-2 font-semibold text-base">
+                <span className="text-gray-900">이상 탐지 이력</span>
+                <span className="text-sky-500">{instanceReports.length}</span>
+              </div>
+              <button className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.3662 3.11528C14.6666 2.95723 15.0265 2.96246 15.3223 3.12895L18.165 4.72856L18.2744 4.79985C18.516 4.98097 18.6647 5.26385 18.6738 5.57035L18.751 8.16703L21.0225 9.54008C21.322 9.72112 21.5048 10.0456 21.5049 10.3955V13.6006C21.5049 13.9511 21.3216 14.2761 21.0215 14.4571L18.751 15.8252L18.6719 18.4239C18.6611 18.7731 18.4682 19.0917 18.1641 19.2637L15.3242 20.8702C15.0281 21.0377 14.6673 21.0432 14.3662 20.8848L11.998 19.6387L9.63086 20.8848C9.33049 21.0428 8.97057 21.0376 8.6748 20.8711L5.83203 19.2715C5.52661 19.0996 5.33365 18.7801 5.32324 18.4297L5.24512 15.8321L2.97363 14.459C2.67392 14.278 2.4903 13.9537 2.49023 13.6036V10.3985C2.49023 10.0481 2.6736 9.72304 2.97363 9.54203L5.24414 8.17289L5.32422 5.57524L5.33691 5.44535C5.38523 5.14816 5.56586 4.8858 5.83203 4.73539L8.67285 3.12895L8.78711 3.07426C9.05855 2.96336 9.3676 2.97676 9.63086 3.11528L11.998 4.36039L14.3662 3.11528ZM12.4639 6.37602C12.1725 6.52914 11.8245 6.52919 11.5332 6.37602L9.18262 5.13871L7.30566 6.19926L7.22656 8.77836C7.21612 9.11772 7.0339 9.4292 6.74316 9.60453L4.49023 10.9629V13.0391L6.74609 14.4024L6.85059 14.4737C7.08023 14.6555 7.21969 14.9315 7.22852 15.2286L7.30469 17.8047L9.18066 18.8614L11.5332 17.6241L11.6445 17.5743C11.9104 17.4735 12.2088 17.49 12.4639 17.6241L14.8145 18.8604L16.6895 17.7998L16.7686 15.2207L16.7812 15.0948C16.8271 14.8056 16.9976 14.548 17.252 14.3946L19.5049 13.0362V10.959L17.251 9.5977C16.9603 9.42208 16.7786 9.111 16.7686 8.77153L16.6914 6.19438L14.8154 5.13774L12.4639 6.37602ZM13.999 12C13.999 10.8956 13.1034 10.0003 11.999 10C10.8945 10 9.99902 10.8955 9.99902 12C9.99902 13.1046 10.8945 14 11.999 14C13.1034 13.9998 13.999 13.1045 13.999 12ZM15.999 12C15.999 14.209 14.208 15.9998 11.999 16C9.78988 16 7.99902 14.2092 7.99902 12C7.99902 9.7909 9.78988 8.00004 11.999 8.00004C14.208 8.00028 15.999 9.79105 15.999 12Z" fill="#9ca3af"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {instanceReports.slice(0, visibleReportsCount).map(report => (
+                <div
+                  key={report.id}
+                  className={`rounded-md overflow-hidden hover:shadow-[0px_0px_16px_0px_rgba(3,7,18,0.08)] transition cursor-pointer px-4 py-3 ${
+                    report.selected 
+                      ? 'border-[1.5px] border-transparent' 
+                      : 'border border-gray-200 hover:border-gray-300'
+                  }`}
+                  style={report.selected ? {
+                    background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, rgba(0, 188, 255, 1) 0%, rgba(142, 81, 255, 1) 100%) border-box'
+                  } : { background: 'white' }}
+                >
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <img 
+                          src="/logos/oracle-logo.svg" 
+                          alt="Oracle" 
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm font-semibold text-[#030712]">{report.server}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <circle cx="6" cy="6" r="5" stroke="#6a7282" strokeWidth="1"/>
+                          <path d="M6 3V6H9" stroke="#6a7282" strokeWidth="1"/>
+                        </svg>
+                        <span className="text-[11px] text-[#6a7282]">{report.time}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-[#6a7282]">최초 이상 감지</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-[#1e2939]">{report.metric}</span>
+                        {report.badge && (
+                          <span className="bg-[#e5e7eb] rounded-full px-1 min-w-[20px] h-5 flex items-center justify-center text-xs font-medium text-[#1e2939]">
+                            {report.badge}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-sm text-[#1e2939] flex-1">{issue.text}</span>
-                  <span className="text-xs text-[#6a7282]">{issue.time}</span>
                 </div>
               ))}
-              <div className="flex items-center gap-2 p-1 bg-[#f3f4f6] rounded-md mt-1">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 bg-[#2b7fff]">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.67 4L6 7.33L9.33 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <div className="flex items-center gap-1 h-6">
-                  <span className="text-sm font-semibold text-[#2b7fff]">2개</span>
-                  <span className="text-sm text-[#030712]">추가 이상 감지중</span>
-                </div>
-              </div>
+              
+              {/* 더 불러오기 버튼 */}
+              {visibleReportsCount < instanceReports.length && (
+                <button
+                  onClick={() => setVisibleReportsCount(instanceReports.length)}
+                  className="flex items-center justify-center gap-2 h-10 px-3 rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  <img src="/plus.svg" alt="Plus" className="w-4 h-4" />
+                  <span className="text-sm font-medium text-[#030712]">더 불러오기</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -430,94 +479,8 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
           </div>
 
           {/* 구분선 */}
-          <div className="h-px bg-[#e5e7eb]" />
+          <div className="h-px bg-gray-200" />
 
-          {/* 인스턴스 정보 */}
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-bold text-[#030712]">인스턴스 정보</h3>
-            
-            {/* CPU 사용률 */}
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-[#6a7282]">CPU 사용률</span>
-                <span className="font-medium text-[#030712]">{block.cpuUsage}%</span>
-              </div>
-              <div className="w-full h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
-                <div 
-                  className="h-full rounded-full transition-all"
-                  style={{ 
-                    width: `${block.cpuUsage}%`,
-                    backgroundColor: getStatusColor(block.status)
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* 메모리 사용률 */}
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-[#6a7282]">메모리 사용률</span>
-                <span className="font-medium text-[#030712]">{metrics.memory}%</span>
-              </div>
-              <div className="w-full h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[#38bdf8] rounded-full"
-                  style={{ width: `${metrics.memory}%` }}
-                />
-              </div>
-            </div>
-
-            {/* 디스크 사용률 */}
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-[#6a7282]">디스크 사용률</span>
-                <span className="font-medium text-[#030712]">{metrics.disk}%</span>
-              </div>
-              <div className="w-full h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[#a78bfa] rounded-full"
-                  style={{ width: `${metrics.disk}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 구분선 */}
-          <div className="h-px bg-[#e5e7eb]" />
-
-          {/* 성능 메트릭 */}
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-bold text-[#030712]">성능 메트릭</h3>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {/* 활성 세션 */}
-              <div className="flex flex-col gap-1 p-3 bg-[#f3f4f6] rounded-lg">
-                <span className="text-xs text-[#6a7282]">활성 세션</span>
-                <span className="text-xl font-bold text-[#030712]">{metrics.sessions}</span>
-              </div>
-              
-              {/* 초당 트랜잭션 */}
-              <div className="flex flex-col gap-1 p-3 bg-[#f3f4f6] rounded-lg">
-                <span className="text-xs text-[#6a7282]">TPS</span>
-                <span className="text-xl font-bold text-[#030712]">{metrics.transactions}</span>
-              </div>
-              
-              {/* 평균 응답시간 */}
-              <div className="flex flex-col gap-1 p-3 bg-[#f3f4f6] rounded-lg">
-                <span className="text-xs text-[#6a7282]">응답 시간</span>
-                <span className="text-xl font-bold text-[#030712]">{metrics.responseTime}ms</span>
-              </div>
-              
-              {/* 대기 이벤트 */}
-              <div className="flex flex-col gap-1 p-3 bg-[#f3f4f6] rounded-lg">
-                <span className="text-xs text-[#6a7282]">대기 이벤트</span>
-                <span className="text-xl font-bold text-[#030712]">{block.status !== 'normal' ? 3 : 0}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 구분선 */}
-          <div className="h-px bg-[#e5e7eb]" />
 
           {/* RAC 연결 정보 */}
           <div className="flex flex-col gap-3">
@@ -538,27 +501,27 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
           </div>
 
           {/* 구분선 */}
-          <div className="h-px bg-[#e5e7eb]" />
+          <div className="h-px bg-gray-200" />
 
           {/* Top SQL */}
           <div className="flex flex-col gap-3">
             <h3 className="text-sm font-bold text-[#030712]">Top SQL</h3>
             <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-1 p-2 bg-[#f3f4f6] rounded">
+              <div className="flex flex-col gap-1 p-2 bg-gray-100 rounded">
                 <div className="flex justify-between items-start">
                   <span className="text-xs font-mono text-[#030712] flex-1">SELECT * FROM orders WHERE...</span>
                   <span className="text-xs font-medium text-[#fb2c36]">{(block.cpuUsage * 10).toFixed(1)}ms</span>
                 </div>
                 <span className="text-xs text-[#6a7282]">실행 횟수: {metrics.transactions}</span>
               </div>
-              <div className="flex flex-col gap-1 p-2 bg-[#f3f4f6] rounded">
+              <div className="flex flex-col gap-1 p-2 bg-gray-100 rounded">
                 <div className="flex justify-between items-start">
                   <span className="text-xs font-mono text-[#030712] flex-1">UPDATE users SET status...</span>
                   <span className="text-xs font-medium text-[#fe9a00]">{(block.cpuUsage * 8).toFixed(1)}ms</span>
                 </div>
                 <span className="text-xs text-[#6a7282]">실행 횟수: {Math.floor(metrics.transactions * 0.7)}</span>
               </div>
-              <div className="flex flex-col gap-1 p-2 bg-[#f3f4f6] rounded">
+              <div className="flex flex-col gap-1 p-2 bg-gray-100 rounded">
                 <div className="flex justify-between items-start">
                   <span className="text-xs font-mono text-[#030712] flex-1">INSERT INTO logs VALUES...</span>
                   <span className="text-xs font-medium text-[#34d399]">{(block.cpuUsage * 5).toFixed(1)}ms</span>
@@ -569,7 +532,7 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
           </div>
 
           {/* 구분선 */}
-          <div className="h-px bg-[#e5e7eb]" />
+          <div className="h-px bg-gray-200" />
 
           {/* 테이블스페이스 */}
           <div className="flex flex-col gap-3">
@@ -624,21 +587,6 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* AI 진단 보고서 확인하기 버튼 */}
-      <div className="p-5">
-        <button 
-          className="w-full flex items-center justify-center gap-1 px-2.5 h-12 rounded-md font-semibold text-white text-base"
-          style={{
-            background: 'linear-gradient(151deg, rgba(0, 188, 255, 1) 0%, rgba(142, 81, 255, 1) 100%)'
-          }}
-        >
-          <span>AI 진단 보고서 확인하기</span>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M8 15L13 10L8 5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
       </div>
     </div>
   );

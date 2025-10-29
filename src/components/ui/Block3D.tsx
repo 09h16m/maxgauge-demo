@@ -336,6 +336,7 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
   const [hoveredBlockId, setHoveredBlockId] = useState<number | null>(null);
   const onBlocksChangeRef = useRef(onBlocksChange);
   const connectionsRef = useRef<Map<number, number[]>>(new Map()); // RAC 연결 정보 저장
+  const previousBlocksRef = useRef<BlockData[]>([]); // 이전 블록 데이터 저장
   const orbitControlsRef = useRef<any>(null);
 
   // 초기 카메라 위치 저장
@@ -429,33 +430,61 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
       }
 
       const newBlocks: BlockData[] = Array.from({ length: 256 }, (_, i) => {
-        // 92%는 낮은 CPU (0~30%), 8%는 높은 CPU (30~100%)
-        const rand = Math.random();
+        const previousBlock = previousBlocksRef.current[i];
         let cpuUsage: number;
 
-        if (rand < 0.92) {
-          // 92%가 0~30%: 회색 80%, 파란색 15%, 초록색 5%
-          const subRand = Math.random();
-          if (subRand < 0.8) {
-            // 80%가 0~10% (회색)
+        if (previousBlock && previousBlock.status === 'normal') {
+          // 이전 블록이 정상 상태면 같은 색상 범위 내에서만 변경
+          const prevCpu = previousBlock.cpuUsage;
+          
+          if (prevCpu <= 10) {
+            // 흰색 범위 (0~10%) 유지
             cpuUsage = Math.floor(Math.random() * 11); // 0~10
-          } else if (subRand < 0.95) {
-            // 15%가 11~25% (파란색)
+          } else if (prevCpu <= 25) {
+            // 파란색 범위 (11~25%) 유지
             cpuUsage = Math.floor(Math.random() * 15) + 11; // 11~25
           } else {
-            // 5%가 26~30% (초록색)
-            cpuUsage = Math.floor(Math.random() * 5) + 26; // 26~30
+            // 초록색 범위 (26~40%) 유지
+            cpuUsage = Math.floor(Math.random() * 15) + 26; // 26~40
           }
+        } else if (previousBlock && (previousBlock.status === 'warning' || previousBlock.status === 'critical')) {
+          // 이상 상태 블록은 40~100% 범위에서 랜덤 생성
+          cpuUsage = Math.floor(Math.random() * 61) + 40; // 40~100
         } else {
-          // 8%가 30~100%
-          cpuUsage = Math.floor(Math.random() * 71) + 30; // 30~100
+          // 최초 실행 시: 기존 로직 사용
+          const rand = Math.random();
+          
+          if (rand < 0.92) {
+            // 92%가 0~40%: 회색 74.565%, 파란색 17.717%, 초록색 7.717%
+            const subRand = Math.random();
+            if (subRand < 0.74565) {
+              // 74.565%가 0~10% (회색)
+              cpuUsage = Math.floor(Math.random() * 11); // 0~10
+            } else if (subRand < 0.92282) {
+              // 17.717%가 11~25% (파란색)
+              cpuUsage = Math.floor(Math.random() * 15) + 11; // 11~25
+            } else {
+              // 7.717%가 26~40% (초록색)
+              cpuUsage = Math.floor(Math.random() * 15) + 26; // 26~40
+            }
+          } else {
+            // 8%가 30~100%
+            cpuUsage = Math.floor(Math.random() * 71) + 30; // 30~100
+          }
         }
 
         // 상태 확률 조정 (warning 4%, critical 3%)
         let status: BlockData['status'] = 'normal';
-        const abnormalChance = Math.random();
-        if (abnormalChance < 0.04) status = 'warning';      // 4%
-        else if (abnormalChance < 0.07) status = 'critical'; // 3% (0.04~0.07)
+        
+        if (previousBlock) {
+          // 이전 블록이 있으면 이전 상태 유지 (정상은 정상, 이상은 이상 유지)
+          status = previousBlock.status;
+        } else {
+          // 최초 실행 시에만 새로운 상태 부여
+          const abnormalChance = Math.random();
+          if (abnormalChance < 0.04) status = 'warning';      // 4%
+          else if (abnormalChance < 0.07) status = 'critical'; // 3% (0.04~0.07)
+        }
 
         // 저장된 연결 정보 사용
         const connections = connectionsRef.current.get(i) || [];
@@ -463,6 +492,9 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
         return { id: i, cpuUsage, status, connections };
       });
 
+      // 이전 블록 데이터 저장
+      previousBlocksRef.current = newBlocks;
+      
       setBlocks(newBlocks);
       onBlocksChangeRef.current?.(newBlocks);
     };

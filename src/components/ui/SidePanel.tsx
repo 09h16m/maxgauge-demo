@@ -14,11 +14,13 @@ export default function SidePanel({ selectedBlock, onBack }: SidePanelProps) {
     <div className="flex flex-col items-end p-6 h-full">
       {/* 메인 패널 (투명 배경 + 블러) */}
       <div 
-        className="w-[400px] flex-1 rounded-md shadow-[0px_0px_20px_0px_rgba(3,7,18,0.12)] overflow-hidden"
+        className="w-[400px] flex-1 rounded-md overflow-hidden"
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.8)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
+          boxShadow: '0px 0px 20px 0px rgba(3,7,18,0.12), 0px 0px 1px 0px rgba(3,7,18,0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.6)',
         }}
       >
         <div className="h-full overflow-y-auto">
