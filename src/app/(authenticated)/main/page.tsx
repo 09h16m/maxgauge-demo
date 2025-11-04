@@ -3,14 +3,49 @@
 import { useRouter } from "next/navigation";
 import { Clock, Database, TrendingUp, Eye, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ReactECharts from 'echarts-for-react';
 import GNB from "@/components/layout/GNB";
 import { FlickeringGrid } from "@/components/ui/shadcn-io/flickering-grid";
-import { Calendar } from "@/components/ui/calendar";
+import { Tooltip } from "@/components/ui/tooltip";
+import CircularOrbAnimation from "@/components/ui/CircularOrbAnimation";
+import ReportCard from "@/components/ui/ReportCard";
 
 export default function MainPage() {
   const router = useRouter();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 스크롤 이벤트 감지
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      setIsScrolling(true);
+      
+      // 스크롤이 멈춘 후 1초 뒤에 스크롤바 숨기기
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 1000);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    scrollContainer.addEventListener('wheel', handleScroll);
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll);
+      scrollContainer.removeEventListener('wheel', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 알람 데이터
   const alarmData = [
@@ -92,38 +127,28 @@ export default function MainPage() {
         </div>
 
         {/* 메인 컨텐츠 */}
+        <div className="flex flex-col items-center justify-center gap-6">
         <div className="flex items-center justify-center gap-6 w-full max-w-6xl h-[320px]">
           
           {/* MaxGauge AI 위젯 (왼쪽 큰 위젯) */}
           <div className="bg-white border border-white/60 rounded-2xl shadow-[0px_0px_20px_0px_rgba(3,7,18,0.08),0px_0px_1px_0px_rgba(3,7,18,0.5)] flex items-stretch w-[640px] h-[320px]">
             
-            {/* MaxGauge 위젯 */}
+            {/* MaxGauge 위젯 with Circular Orb Animation */}
             <div 
-              className="w-[320px] h-full flex flex-col items-center justify-center gap-3 p-6 relative flex-shrink-0 overflow-hidden rounded-l-2xl"
-              style={{
-                background: `radial-gradient(circle at 50% 100%, rgba(0, 82, 252, 1) 0%, rgba(0, 185, 252, 0.8) 34%, rgba(216, 240, 252, 0.6) 76%, rgba(255, 255, 255, 0) 100%)`,
-              }}
+              className="w-[320px] h-full relative flex-shrink-0 rounded-l-2xl cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => router.push('/maxgauge-ai')}
             >
-              {/* 배경 이미지 */}
-              <div className="absolute inset-0 w-full h-full overflow-hidden">
-                <img 
-                  src="/widget-bg-1.png" 
-                  alt="Widget Background" 
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 relative">
+                {/* MAX AI 텍스트 - 위쪽 중앙에 절대 위치 */}
+                <p className="absolute top-6 left-1/2 transform -translate-x-1/2 text-sm text-sky-400 font-medium z-20">MAX AI</p>
+                
+                {/* 원형 오브 애니메이션 */}
+                <CircularOrbAnimation size={220}>
+                  <h3 className="text-2xl font-medium text-white">
+                    NORMAL
+                  </h3>
+                </CircularOrbAnimation>
               </div>
-              
-              {/* Ripple 효과 제거됨 */}
-              
-              {/* 상태 텍스트 */}
-              <div className="relative z-10 text-center">
-                <h3 className="text-5xl font-bold text-white mb-2" style={{ textShadow: '0px 1px 8px 0px rgba(0, 82, 252, 0.25)' }}>
-                  정상
-                </h3>
-              </div>
-              
-              {/* MAX AI 텍스트 - 위쪽 중앙에 절대 위치 */}
-              <p className="absolute top-6 left-1/2 transform -translate-x-1/2 text-sm text-white font-medium z-10">MAX AI</p>
             </div>
 
             {/* 이상 탐지 이력 */}
@@ -134,22 +159,18 @@ export default function MainPage() {
               </div>
               
               {/* 스크롤 가능한 리스트 */}
-              <div className="flex flex-col gap-2 px-6 pb-6 overflow-y-auto flex-1">
+              <div 
+                ref={scrollContainerRef}
+                className={`flex flex-col gap-2 px-6 pb-6 overflow-y-auto flex-1 scrollbar-hide-on-idle ${isScrolling ? 'scrolling' : ''}`}
+              >
                 {anomalyReports.map((report, index) => (
-                  <div key={index} className="bg-white border border-gray-200 rounded-md p-3 hover:shadow-[0px_0px_16px_0px_rgba(3,7,18,0.08)] hover:border-gray-300 transition cursor-pointer">
-                    <div className="flex items-center gap-2 mb-1">
-                      <img 
-                        src="/logos/oracle-logo.svg" 
-                        alt="Oracle" 
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm font-medium text-gray-700">{report.server}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-gray-500" />
-                      <span className="text-xs text-gray-600">{report.time}</span>
-                    </div>
-                  </div>
+                  <ReportCard
+                    key={index}
+                    id={index + 1}
+                    server={report.server}
+                    time={report.time}
+                    variant="simplified"
+                  />
                 ))}
               </div>
             </div>
@@ -261,40 +282,47 @@ export default function MainPage() {
               </div>
             </div>
 
-            {/* Calendar 위젯 */}
-            <div className="bg-white border border-white/60 rounded-2xl shadow-[0px_0px_20px_0px_rgba(3,7,18,0.08),0px_0px_1px_0px_rgba(3,7,18,0.5)] p-6 w-[320px] h-[320px] flex flex-col items-center gap-5">
-              
-              {/* 실제 Calendar 컴포넌트 */}
-              <div className="flex-1 w-full">
-                <Calendar
-                  mode="single"
-                  className="w-full"
-                  classNames={{
-                    months: "flex flex-col space-y-4",
-                    month: "space-y-4",
-                    caption: "flex justify-between items-center pt-1 relative w-full",
-                    caption_label: "text-sm font-medium",
-                    nav: "flex items-center space-x-1",
-                    nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-                    nav_button_previous: "relative",
-                    nav_button_next: "relative",
-                    table: "w-full border-collapse space-y-1",
-                    head_row: "flex",
-                    head_cell: "text-gray-500 rounded-md w-9 font-normal text-xs",
-                    row: "flex w-full mt-2",
-                    cell: "h-9 w-9 text-center text-sm p-0 relative",
-                    day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded",
-                    day_selected: "bg-blue-500 text-white hover:bg-blue-500 hover:text-white focus:bg-blue-500 focus:text-white",
-                    day_today: "bg-gray-100 text-gray-900",
-                    day_outside: "text-gray-400 opacity-50",
-                    day_disabled: "text-gray-400 opacity-50",
-                    day_hidden: "invisible",
-                  }}
-                />
-              </div>
-            </div>
-
           </div>
+        </div>
+
+        {/* 추천 메뉴 */}
+        <div className="bg-white border border-white/60 rounded-2xl shadow-[0px_0px_20px_0px_rgba(3,7,18,0.08),0px_0px_1px_0px_rgba(3,7,18,0.5)] flex items-center gap-6 px-6 py-3 w-full max-w-6xl">
+          {/* 제목 */}
+          <h2 className="text-base font-semibold text-gray-900 whitespace-nowrap">추천 메뉴</h2>
+          
+          {/* 메뉴 아이템들 */}
+          <div className="flex gap-3 flex-1">
+            {/* MaxGauge AI */}
+            <button className="flex items-center justify-center gap-2 px-2 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex-1">
+              <img src="/tools-symbol.svg" alt="Tools" className="w-5 h-5" />
+              <span className="text-sm font-medium text-gray-900">MaxGauge AI</span>
+            </button>
+            
+            {/* Root Finder */}
+            <button className="flex items-center justify-center gap-2 px-2 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex-1">
+              <img src="/rootfinder-symbol.svg" alt="Root Finder" className="w-5 h-5" />
+              <span className="text-sm font-medium text-gray-900">Root Finder</span>
+            </button>
+            
+            {/* Memory Analysis */}
+            <button className="flex items-center justify-center gap-2 px-2 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex-1">
+              <img src="/logos/oracle-logo.svg" alt="Oracle" className="w-5 h-5" />
+              <span className="text-sm font-medium text-gray-900">Memory Analysis</span>
+            </button>
+            
+            {/* Oracle Alertlog */}
+            <button className="flex items-center justify-center gap-2 px-2 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex-1">
+              <img src="/logos/oracle-logo.svg" alt="Oracle" className="w-5 h-5" />
+              <span className="text-sm font-medium text-gray-900">Oracle Alertlog</span>
+            </button>
+            
+            {/* Access Pattern */}
+            <button className="flex items-center justify-center gap-2 px-2 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex-1">
+              <img src="/logos/oracle-logo.svg" alt="Oracle" className="w-5 h-5" />
+              <span className="text-sm font-medium text-gray-900">Access Pattern</span>
+            </button>
+          </div>
+        </div>
         </div>
       </motion.div>
       </div>

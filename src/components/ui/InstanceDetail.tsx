@@ -3,6 +3,7 @@
 import { BlockData } from './Block3D';
 import { useMemo, useState, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
+import ReportCard from './ReportCard';
 
 interface InstanceDetailProps {
   block: BlockData;
@@ -328,48 +329,15 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
 
             <div className="flex flex-col gap-2">
               {instanceReports.slice(0, visibleReportsCount).map(report => (
-                <div
+                <ReportCard
                   key={report.id}
-                  className={`rounded-md overflow-hidden hover:shadow-[0px_0px_16px_0px_rgba(3,7,18,0.08)] transition cursor-pointer px-4 py-3 ${
-                    report.selected 
-                      ? 'border-[1.5px] border-transparent' 
-                      : 'border border-gray-200 hover:border-gray-300'
-                  }`}
-                  style={report.selected ? {
-                    background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, rgba(0, 188, 255, 1) 0%, rgba(142, 81, 255, 1) 100%) border-box'
-                  } : { background: 'white' }}
-                >
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <img 
-                          src="/logos/oracle-logo.svg" 
-                          alt="Oracle" 
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm font-semibold text-[#030712]">{report.server}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <circle cx="6" cy="6" r="5" stroke="#6a7282" strokeWidth="1"/>
-                          <path d="M6 3V6H9" stroke="#6a7282" strokeWidth="1"/>
-                        </svg>
-                        <span className="text-[11px] text-[#6a7282]">{report.time}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-[#6a7282]">최초 이상 감지</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-[#1e2939]">{report.metric}</span>
-                        {report.badge && (
-                          <span className="bg-[#e5e7eb] rounded-full px-1 min-w-[20px] h-5 flex items-center justify-center text-xs font-medium text-[#1e2939]">
-                            {report.badge}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  id={report.id}
+                  server={report.server}
+                  time={report.time}
+                  metric={report.metric}
+                  badge={report.badge}
+                  selected={report.selected}
+                />
               ))}
               
               {/* 더 불러오기 버튼 */}
