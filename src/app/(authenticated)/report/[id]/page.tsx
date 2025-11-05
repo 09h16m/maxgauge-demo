@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, use } from "react";
 import { useReactTable, getCoreRowModel, flexRender, ColumnDef } from "@tanstack/react-table";
 import ReportCard from "@/components/ui/ReportCard";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Tabs from "@/components/ui/Tabs";
 import FlowDiagram from "@/components/ui/FlowDiagram";
+import FlowTimeline from "@/components/ui/FlowTimeline";
+import ReactECharts from 'echarts-for-react';
 
 interface ReportPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 interface ReportData {
@@ -28,6 +30,54 @@ const mockReports: ReportData[] = [
   { id: 3, server: "DB-SERVER-04", time: "2025-10-03 18:21", metric: "Total Wait Time" },
   { id: 4, server: "APP-SERVER-07", time: "2025-10-03 18:21", metric: "Total Wait Time" },
 ];
+
+// 차트 옵션 생성 함수 (InstanceDetail과 동일한 스타일)
+const getAreaChartOption = (data: number[], times: string[], color = '#00BCFF') => {
+  return {
+    grid: {
+      left: 0,
+      right: 0,
+      top: 10,
+      bottom: 0,
+      containLabel: false,
+    },
+    xAxis: {
+      type: 'category',
+      data: times,
+      show: false,
+      boundaryGap: false,
+    },
+    yAxis: {
+      type: 'value',
+      show: false,
+      min: 0,
+      max: 100,
+    },
+    series: [
+      {
+        data: data,
+        type: 'line',
+        smooth: 0.1,
+        symbol: 'none',
+        lineStyle: {
+          color: color,
+          width: 1.5,
+        },
+        itemStyle: {
+          color: color,
+        },
+        areaStyle: {
+          color: '#38bdf820', // Sky-400 with 20% opacity
+        },
+      },
+    ],
+    animation: true,
+    animationDuration: 1500,
+    animationDurationUpdate: 1500, // 데이터 변경 시에도 애니메이션 재생
+    animationEasing: 'cubicOut',
+    animationDelay: (idx: number) => idx * 20, // 각 데이터 포인트마다 20ms씩 딜레이
+  };
+};
 
 // 목차 구조 데이터 (동기화를 위한 단일 소스)
 interface TocItem {
@@ -116,8 +166,9 @@ const tableOfContents: TocItem[] = [
 ];
 
 export default function ReportPage({ params }: ReportPageProps) {
+  const { id } = use(params);
   const [selectedReportId, setSelectedReportId] = useState<number>(
-    parseInt(params.id) || mockReports[0].id
+    parseInt(id) || mockReports[0].id
   );
   
   // 이상 탐지 흐름 요약 섹션의 뷰 모드 (다이어그램/타임라인)
@@ -134,6 +185,27 @@ export default function ReportPage({ params }: ReportPageProps) {
     }
   }, [flowSummaryView]);
   
+  // 리포트가 변경될 때 확장된 섹션과 탭 상태 초기화 및 다이어그램 재생성
+  useEffect(() => {
+    setExpandedSections({
+      'top-event-1': false,
+      'top-event-2': false,
+      'top-event-3': false,
+      'top-sql-1': false,
+      'top-sql-2': false,
+      'top-sql-3': false,
+    });
+    setTopEvent1Tab('phenomenon');
+    setFlowSummaryView('diagram');
+    // 리포트가 변경되면 다이어그램도 다시 그리기
+    setDiagramKey(Date.now());
+    // 리포트 변경 시 콘텐츠 영역을 맨 위로 스크롤
+    const contentArea = document.getElementById('report-content-area');
+    if (contentArea) {
+      contentArea.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [selectedReportId]);
+  
   // 2depth 섹션 접기/펼치기 상태 (기본값: 모두 닫힘)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'top-event-1': false,
@@ -145,6 +217,41 @@ export default function ReportPage({ params }: ReportPageProps) {
   });
 
   const selectedReport = mockReports.find((r) => r.id === selectedReportId) || mockReports[0];
+
+  // 리포트 ID를 시드로 사용하여 일관된 랜덤 데이터 생성
+  const getSeededRandom = (seed: number) => {
+    let value = seed;
+    return () => {
+      value = (value * 9301 + 49297) % 233280;
+      return value / 233280;
+    };
+  };
+
+  // 차트 데이터 생성 (리포트 ID에 따라 다른 데이터)
+  const chartTimes = useMemo(() => {
+    const times: string[] = [];
+    for (let i = 23; i >= 0; i--) {
+      const hour = String(Math.floor(i / 2)).padStart(2, '0');
+      const minute = i % 2 === 0 ? '00' : '30';
+      times.push(`${hour}:${minute}`);
+    }
+    return times;
+  }, []);
+
+  const waitCountData = useMemo(() => {
+    const random = getSeededRandom(selectedReportId * 100);
+    return Array.from({ length: 24 }, () => Math.floor(random() * 50) + 20);
+  }, [selectedReportId]);
+
+  const avgWaitingSessionData = useMemo(() => {
+    const random = getSeededRandom(selectedReportId * 200);
+    return Array.from({ length: 24 }, () => Math.floor(random() * 40) + 15);
+  }, [selectedReportId]);
+
+  const avgWaitTimeData = useMemo(() => {
+    const random = getSeededRandom(selectedReportId * 300);
+    return Array.from({ length: 24 }, () => Math.floor(random() * 20) + 5);
+  }, [selectedReportId]);
 
   // Top 3 Session 테이블 데이터
   const top3SessionData = useMemo(() => [
@@ -167,36 +274,55 @@ export default function ReportPage({ params }: ReportPageProps) {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  // Top 3 SQL 테이블 데이터
-  const top3SqlData = useMemo(() => [
-    { 
-      sqlId: '9G1H3K6RX2VFY', 
-      sqlText: 'SELECT COUNT(*) FROM EMP WHERE EMPNO=:B1 AND TYPE=:B2',
-      planHash: '1357924680',
-      executions: 520,
-      waitTime: 69,
-      elapsedTime: 5.2,
-      elapsedTimePerExec: 0.01
-    },
-    { 
-      sqlId: '4P8ZQ2M7LAK1C', 
-      sqlText: 'SELECT c1,c2 FROM SALES WHERE dt BETWEEN :B1 AND :B2',
-      planHash: '5678901234',
-      executions: 480,
-      waitTime: 18,
-      elapsedTime: 3.1,
-      elapsedTimePerExec: 0.006
-    },
-    { 
-      sqlId: '6N3B7T9QW1D2E', 
-      sqlText: 'SELECT * FROM ORDERS WHERE id=:B1',
-      planHash: '1928374650',
-      executions: 420,
-      waitTime: 13,
-      elapsedTime: 2.8,
-      elapsedTimePerExec: 0.007
-    },
-  ], []);
+  // Top 3 SQL 테이블 데이터 (리포트 ID에 따라 다른 데이터)
+  const top3SqlData = useMemo(() => {
+    const random = getSeededRandom(selectedReportId * 500);
+    const sqlIds = [
+      `9G${selectedReportId}H3K6RX2VFY`,
+      `4P${selectedReportId}ZQ2M7LAK1C`,
+      `6N${selectedReportId}B7T9QW1D2E`
+    ];
+    const sqlTexts = [
+      'SELECT COUNT(*) FROM EMP WHERE EMPNO=:B1 AND TYPE=:B2',
+      'SELECT c1,c2 FROM SALES WHERE dt BETWEEN :B1 AND :B2',
+      'SELECT * FROM ORDERS WHERE id=:B1'
+    ];
+    const planHashes = [
+      `13579${selectedReportId}4680`,
+      `56789${selectedReportId}1234`,
+      `19283${selectedReportId}4650`
+    ];
+    
+    return [
+      { 
+        sqlId: sqlIds[0], 
+        sqlText: sqlTexts[0],
+        planHash: planHashes[0],
+        executions: 500 + Math.floor(random() * 100),
+        waitTime: 60 + Math.floor(random() * 20),
+        elapsedTime: 4.5 + random() * 2,
+        elapsedTimePerExec: 0.008 + random() * 0.005
+      },
+      { 
+        sqlId: sqlIds[1], 
+        sqlText: sqlTexts[1],
+        planHash: planHashes[1],
+        executions: 450 + Math.floor(random() * 100),
+        waitTime: 50 + Math.floor(random() * 20),
+        elapsedTime: 3.5 + random() * 2,
+        elapsedTimePerExec: 0.005 + random() * 0.005
+      },
+      { 
+        sqlId: sqlIds[2], 
+        sqlText: sqlTexts[2],
+        planHash: planHashes[2],
+        executions: 400 + Math.floor(random() * 100),
+        waitTime: 40 + Math.floor(random() * 20),
+        elapsedTime: 2.5 + random() * 2,
+        elapsedTimePerExec: 0.006 + random() * 0.004
+      },
+    ];
+  }, [selectedReportId]);
 
   const top3SqlColumns: ColumnDef<typeof top3SqlData[0]>[] = useMemo(() => [
     { accessorKey: 'sqlId', header: 'SQL ID', size: 160 },
@@ -241,23 +367,52 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   // 목차 클릭 시 해당 섹션으로 스크롤
   const scrollToSection = (sectionId: string) => {
+    // 2depth 메뉴 항목이면 아코디언 펼치기
+    const eventSections = ['top-event-1', 'top-event-2', 'top-event-3'];
+    const sqlSections = ['top-sql-1', 'top-sql-2', 'top-sql-3'];
+    const accordionSections = [...eventSections, ...sqlSections];
+    
+    if (accordionSections.includes(sectionId)) {
+      setExpandedSections(prev => {
+        const newState = { ...prev };
+        
+        // 같은 그룹의 섹션들 찾기
+        const group = eventSections.includes(sectionId) ? eventSections : sqlSections;
+        
+        // 같은 그룹의 다른 섹션들 닫기
+        group.forEach(id => {
+          if (id !== sectionId) {
+            newState[id] = false;
+          }
+        });
+        
+        // 선택된 섹션 열기
+        newState[sectionId] = true;
+        
+        return newState;
+      });
+    }
+    
     const contentArea = document.getElementById('report-content-area');
     const element = document.getElementById(sectionId);
     
     if (contentArea && element) {
-      // 컨테이너 기준으로 요소의 상대 위치 계산
-      const containerRect = contentArea.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      
-      // 현재 스크롤 위치 + 요소의 상대 위치
-      const scrollTop = contentArea.scrollTop;
-      const elementTop = elementRect.top - containerRect.top + scrollTop;
-      
-      // 부드럽게 스크롤
-      contentArea.scrollTo({
-        top: elementTop - 20, // 상단 여백 20px
-        behavior: 'smooth'
-      });
+      // 아코디언이 펼쳐지는 시간을 고려하여 약간의 딜레이 추가
+      setTimeout(() => {
+        // 컨테이너 기준으로 요소의 상대 위치 계산
+        const containerRect = contentArea.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        
+        // 현재 스크롤 위치 + 요소의 상대 위치
+        const scrollTop = contentArea.scrollTop;
+        const elementTop = elementRect.top - containerRect.top + scrollTop;
+        
+        // 부드럽게 스크롤
+        contentArea.scrollTo({
+          top: elementTop - 20, // 상단 여백 20px
+          behavior: 'smooth'
+        });
+      }, accordionSections.includes(sectionId) ? 100 : 0);
     }
   };
 
@@ -365,9 +520,17 @@ export default function ReportPage({ params }: ReportPageProps) {
       </div>
 
       {/* Right Container - Report Content */}
-      <div className="flex flex-col flex-1 bg-gray-100 overflow-hidden">
+      <div 
+        className="flex flex-col flex-1 overflow-hidden"
+        style={{
+          background: `
+            linear-gradient(180deg, rgba(206, 221, 240, 0) 0%, rgba(206, 221, 240, 0.6) 100%),
+            linear-gradient(180deg, rgba(246, 222, 205, 0.6) 0%, rgba(246, 222, 205, 0) 100%),
+            #F3F4F6
+          `
+        }}>
           {/* Report Header */}
-          <div className="flex items-baseline gap-3 px-6 pt-6 pb-4 bg-[#f3f4f6] flex-shrink-0">
+          <div className="flex items-baseline gap-3 px-6 pt-6 pb-4  flex-shrink-0">
               <h1 className="text-[20px] font-semibold text-[#030712]">
                 {selectedReport.server} 이상 탐지 보고서
               </h1>
@@ -400,9 +563,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                     <FlowDiagram key={diagramKey} />
                   </div>
                 ) : (
-                  <div className="bg-[#f3f4f6] h-[400px] rounded-[6px] flex items-center justify-center text-[#6a7282]">
-                    타임라인 영역
-                  </div>
+                  <FlowTimeline />
                 )}
               </section>
 
@@ -467,6 +628,102 @@ export default function ReportPage({ params }: ReportPageProps) {
                       <span className="text-[14px] text-[#1e2939]">가 분 평균</span>
                       <span className="text-[14px] font-semibold text-[#155dfc]">32개의 세션</span>
                       <span className="text-[14px] text-[#1e2939]">을 대기하고 있습니다.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 차트 3개 (가로 배치) */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  {/* Wait Count 차트 */}
+                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
+                    <div className="flex items-center h-6">
+                      <span className="text-sm font-medium text-[#030712]">Wait Count</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2 h-[84px]">
+                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
+                          <span>100</span>
+                          <span>75</span>
+                          <span>50</span>
+                          <span>25</span>
+                          <span>0</span>
+                        </div>
+                        <div className="flex-1">
+                          <ReactECharts
+                            key={`wait-count-${selectedReportId}`}
+                            option={getAreaChartOption(waitCountData, chartTimes, '#00BCFF')}
+                            style={{ height: '84px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-[#6a7282] pl-10">
+                        <span>{chartTimes[0] || '00:00'}</span>
+                        <span>{chartTimes[Math.floor(chartTimes.length / 2)] || '12:00'}</span>
+                        <span>{chartTimes[chartTimes.length - 1] || '23:30'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AVG Waiting Session 차트 */}
+                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
+                    <div className="flex items-center h-6">
+                      <span className="text-sm font-medium text-[#030712]">AVG Waiting Session</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2 h-[84px]">
+                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
+                          <span>100</span>
+                          <span>75</span>
+                          <span>50</span>
+                          <span>25</span>
+                          <span>0</span>
+                        </div>
+                        <div className="flex-1">
+                          <ReactECharts
+                            key={`avg-waiting-session-${selectedReportId}`}
+                            option={getAreaChartOption(avgWaitingSessionData, chartTimes, '#00BCFF')}
+                            style={{ height: '84px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-[#6a7282] pl-10">
+                        <span>{chartTimes[0] || '00:00'}</span>
+                        <span>{chartTimes[Math.floor(chartTimes.length / 2)] || '12:00'}</span>
+                        <span>{chartTimes[chartTimes.length - 1] || '23:30'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AVG Wait Time 차트 */}
+                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
+                    <div className="flex items-center h-6">
+                      <span className="text-sm font-medium text-[#030712]">AVG Wait Time</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2 h-[84px]">
+                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
+                          <span>100</span>
+                          <span>75</span>
+                          <span>50</span>
+                          <span>25</span>
+                          <span>0</span>
+                        </div>
+                        <div className="flex-1">
+                          <ReactECharts
+                            key={`avg-wait-time-${selectedReportId}`}
+                            option={getAreaChartOption(avgWaitTimeData, chartTimes, '#00BCFF')}
+                            style={{ height: '84px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-[#6a7282] pl-10">
+                        <span>{chartTimes[0] || '00:00'}</span>
+                        <span>{chartTimes[Math.floor(chartTimes.length / 2)] || '12:00'}</span>
+                        <span>{chartTimes[chartTimes.length - 1] || '23:30'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

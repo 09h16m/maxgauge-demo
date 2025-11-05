@@ -21,7 +21,7 @@ export default function SegmentedControl({
               key={option.value}
               onClick={() => onChange(option.value)}
               className={`
-                px-3 py-1.5 rounded-sm 
+                px-3 py-1.5 rounded-sm
                 text-[14px] font-medium leading-[1.4]
                 transition-all duration-200
                 flex items-center justify-center
