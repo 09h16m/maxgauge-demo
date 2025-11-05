@@ -16,8 +16,8 @@ export default function Tabs({ tabs, value, onChange }: TabsProps) {
             key={tab.value}
             onClick={() => onChange(tab.value)}
             className={`
-              flex items-center justify-center gap-[6px]
-              px-[10px] h-[44px]
+              flex items-center justify-center gap-2
+              pl-3 pr-3.5 h-[40px]
               text-[16px] font-semibold leading-[1.4]
               transition-colors
               relative

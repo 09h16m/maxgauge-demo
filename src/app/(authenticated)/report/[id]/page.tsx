@@ -8,6 +8,9 @@ import Tabs from "@/components/ui/Tabs";
 import FlowDiagram from "@/components/ui/FlowDiagram";
 import FlowTimeline from "@/components/ui/FlowTimeline";
 import ReactECharts from 'echarts-for-react';
+import FadeInUp from "@/components/reveal/FadeInUp";
+import { motion } from "framer-motion";
+import TypingText from "@/components/ui/typing-text";
 
 interface ReportPageProps {
   params: Promise<{
@@ -72,10 +75,10 @@ const getAreaChartOption = (data: number[], times: string[], color = '#00BCFF') 
       },
     ],
     animation: true,
-    animationDuration: 1500,
-    animationDurationUpdate: 1500, // 데이터 변경 시에도 애니메이션 재생
+    animationDuration: 2000,
+    animationDurationUpdate: 2000, // 데이터 변경 시에도 애니메이션 재생
     animationEasing: 'cubicOut',
-    animationDelay: (idx: number) => idx * 20, // 각 데이터 포인트마다 20ms씩 딜레이
+    animationDelay: (idx: number) => idx * 30, // 각 데이터 포인트마다 30ms씩 딜레이
   };
 };
 
@@ -447,7 +450,7 @@ export default function ReportPage({ params }: ReportPageProps) {
   return (
     <div className="flex h-[calc(100vh-56px)] w-full">
       {/* Left Side Panel - Report List */}
-      <div className="w-[320px] bg-white border-r border-[#e5e7eb] flex flex-col overflow-hidden">
+      <div className="w-[360px] bg-white border-r border-[#e5e7eb] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 py-6">
           <div className="flex items-center justify-between mb-6">
@@ -544,7 +547,8 @@ export default function ReportPage({ params }: ReportPageProps) {
             {/* Report Content Cards */}
             <div className="pt-4 pb-6 pr-4 pl-6 space-y-4">
               {/* 1Depth Section: 이상 탐지 흐름 요약 */}
-              <section id="flow-summary" className="bg-white rounded-[8px] p-6">
+              <FadeInUp delay={0.1}>
+                <section id="flow-summary" className="bg-white rounded-[8px] p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-[18px] font-semibold text-[#030712]">
                     이상 탐지 흐름 요약
@@ -566,9 +570,11 @@ export default function ReportPage({ params }: ReportPageProps) {
                   <FlowTimeline />
                 )}
               </section>
+              </FadeInUp>
 
               {/* 1Depth Section: Total Events 이상탐지 */}
-              <section id="total-events" className="bg-white rounded-[8px] p-6 space-y-4">
+              <FadeInUp delay={0.7}>
+                <section id="total-events" className="bg-white rounded-[8px] p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[18px] font-semibold text-[#030712]">
                     Total Events 이상탐지
@@ -596,11 +602,17 @@ export default function ReportPage({ params }: ReportPageProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[14px] text-[#1e2939]">08:40경,</span>
-                      <span className="text-[14px] font-semibold text-[#030712]">Total Events</span>
-                      <span className="text-[14px] text-[#1e2939]">가 평소 대비</span>
-                      <span className="text-[14px] font-semibold text-[#155dfc]">13초(76%) 증가</span>
-                      <span className="text-[14px] text-[#1e2939]">가 확인되었습니다.</span>
+                      <TypingText
+                        text="08:40경, Total Events가 평소 대비 13초(76%) 증가가 확인되었습니다."
+                        typingSpeed={30}
+                        showCursor={false}
+                        loop={false}
+                        className="text-[14px]"
+                        variableSpeed={{ min: 30, max: 80 }}
+                        highlightPatterns={[
+                          { pattern: /13초\(76%\) 증가/, style: 'font-bold text-blue-500' }
+                        ]}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -610,11 +622,18 @@ export default function ReportPage({ params }: ReportPageProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[14px] text-[#1e2939]">전체</span>
-                      <span className="text-[14px] font-semibold text-[#030712]">Wait Time</span>
-                      <span className="text-[14px] text-[#1e2939]">중 증감률이 큰 Top 3 Event가</span>
-                      <span className="text-[14px] font-semibold text-[#155dfc]">88% 점유</span>
-                      <span className="text-[14px] text-[#1e2939]">하고 있습니다.</span>
+                      <TypingText
+                        text="전체 Wait Time 중 증감률이 큰 Top 3 Event가 88% 점유하고 있습니다."
+                        typingSpeed={30}
+                        showCursor={false}
+                        loop={false}
+                        className="text-[14px]"
+                        variableSpeed={{ min: 30, max: 80 }}
+                        initialDelay={500}
+                        highlightPatterns={[
+                          { pattern: /88% 점유/, style: 'font-bold text-blue-500' }
+                        ]}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -624,10 +643,18 @@ export default function ReportPage({ params }: ReportPageProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[14px] font-semibold text-[#030712]">enq: SQ - Contention</span>
-                      <span className="text-[14px] text-[#1e2939]">가 분 평균</span>
-                      <span className="text-[14px] font-semibold text-[#155dfc]">32개의 세션</span>
-                      <span className="text-[14px] text-[#1e2939]">을 대기하고 있습니다.</span>
+                      <TypingText
+                        text="enq: SQ - Contention가 분 평균 32개의 세션을 대기하고 있습니다."
+                        typingSpeed={30}
+                        showCursor={false}
+                        loop={false}
+                        className="text-[14px]"
+                        variableSpeed={{ min: 30, max: 80 }}
+                        initialDelay={1000}
+                        highlightPatterns={[
+                          { pattern: /32개의 세션/, style: 'font-bold text-blue-500' }
+                        ]}
+                      />
                     </div>
                   </div>
                 </div>
@@ -729,7 +756,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                 </div>
 
                 {/* 2Depth: Top Event #1 */}
-                <div id="top-event-1" className="border border-[#e5e7eb] rounded-[6px] overflow-hidden">
+                <div id="top-event-1" className={`border rounded-[6px] overflow-hidden transition-colors ${expandedSections['top-event-1'] ? 'border-sky-500' : 'border-[#e5e7eb]'}`}>
                   {/* 헤더 - 클릭 가능 */}
                   <button
                     onClick={() => toggleSection('top-event-1')}
@@ -766,8 +793,19 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
-                  {expandedSections['top-event-1'] && (
-                    <div className="space-y-6">
+                  <motion.div
+                    layout={false}
+                    animate={{ 
+                      height: expandedSections['top-event-1'] ? "auto" : 0,
+                      opacity: expandedSections['top-event-1'] ? 1 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    style={{ 
+                      overflow: "hidden"
+                    }}
+                  >
+                    {expandedSections['top-event-1'] && (
+                      <div className="space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-event-1-summary" className="px-6 pt-6 space-y-4">
                         <h3 className="text-[18px] font-medium text-[#030712]">요약</h3>
@@ -824,8 +862,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                               value: 'phenomenon',
                               label: '현상',
                               icon: (
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                  <path d="M2 4H14M2 8H14M2 12H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={topEvent1Tab === 'phenomenon' ? 'text-pink-400' : 'text-gray-600'}>
+                                  <path d="M7.425 9.47505L11.15 3.40005C11.25 3.23338 11.375 3.11255 11.525 3.03755C11.675 2.96255 11.8333 2.92505 12 2.92505C12.1667 2.92505 12.325 2.96255 12.475 3.03755C12.625 3.11255 12.75 3.23338 12.85 3.40005L16.575 9.47505C16.675 9.64172 16.725 9.81672 16.725 10C16.725 10.1834 16.6833 10.35 16.6 10.5C16.5167 10.65 16.4 10.7709 16.25 10.8625C16.1 10.9542 15.925 11 15.725 11H8.275C8.075 11 7.9 10.9542 7.75 10.8625C7.6 10.7709 7.48333 10.65 7.4 10.5C7.31667 10.35 7.275 10.1834 7.275 10C7.275 9.81672 7.325 9.64172 7.425 9.47505ZM17.5 22C16.25 22 15.1875 21.5625 14.3125 20.6875C13.4375 19.8125 13 18.75 13 17.5C13 16.25 13.4375 15.1875 14.3125 14.3125C15.1875 13.4375 16.25 13 17.5 13C18.75 13 19.8125 13.4375 20.6875 14.3125C21.5625 15.1875 22 16.25 22 17.5C22 18.75 21.5625 19.8125 20.6875 20.6875C19.8125 21.5625 18.75 22 17.5 22ZM3 20.5V14.5C3 14.2167 3.09583 13.9792 3.2875 13.7875C3.47917 13.5959 3.71667 13.5 4 13.5H10C10.2833 13.5 10.5208 13.5959 10.7125 13.7875C10.9042 13.9792 11 14.2167 11 14.5V20.5C11 20.7834 10.9042 21.0209 10.7125 21.2125C10.5208 21.4042 10.2833 21.5 10 21.5H4C3.71667 21.5 3.47917 21.4042 3.2875 21.2125C3.09583 21.0209 3 20.7834 3 20.5ZM17.5 20C18.2 20 18.7917 19.7584 19.275 19.275C19.7583 18.7917 20 18.2 20 17.5C20 16.8 19.7583 16.2084 19.275 15.725C18.7917 15.2417 18.2 15 17.5 15C16.8 15 16.2083 15.2417 15.725 15.725C15.2417 16.2084 15 16.8 15 17.5C15 18.2 15.2417 18.7917 15.725 19.275C16.2083 19.7584 16.8 20 17.5 20ZM5 19.5H9V15.5H5V19.5ZM10.05 9.00005H13.95L12 5.85005L10.05 9.00005Z" fill="currentColor"/>
                                 </svg>
                               ),
                             },
@@ -833,8 +871,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                               value: 'cause',
                               label: '원인',
                               icon: (
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                  <path d="M8 2L10 6L14 7L11 10L11.5 14L8 12L4.5 14L5 10L2 7L6 6L8 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={topEvent1Tab === 'cause' ? 'text-indigo-400' : 'text-gray-600'}>
+                                  <path d="M16.4 21L15 19.6L16.575 18L15 16.425L16.4 15L18 16.6L19.575 15L21 16.425L19.4 18L21 19.6L19.575 21L18 19.425L16.4 21ZM6 19C6.28333 19 6.52083 18.9042 6.7125 18.7125C6.90417 18.5208 7 18.2833 7 18C7 17.7167 6.90417 17.4792 6.7125 17.2875C6.52083 17.0958 6.28333 17 6 17C5.71667 17 5.47917 17.0958 5.2875 17.2875C5.09583 17.4792 5 17.7167 5 18C5 18.2833 5.09583 18.5208 5.2875 18.7125C5.47917 18.9042 5.71667 19 6 19ZM6 21C5.16667 21 4.45833 20.7083 3.875 20.125C3.29167 19.5417 3 18.8333 3 18C3 17.1667 3.29167 16.4583 3.875 15.875C4.45833 15.2917 5.16667 15 6 15C6.61667 15 7.17917 15.1708 7.6875 15.5125C8.19583 15.8542 8.56667 16.3167 8.8 16.9C9.45 16.7167 9.97917 16.3583 10.3875 15.825C10.7958 15.2917 11 14.6833 11 14V10C11 8.61667 11.4875 7.4375 12.4625 6.4625C13.4375 5.4875 14.6167 5 16 5H17.15L15.575 3.425L17 2L21 6L17 10L15.575 8.6L17.15 7H16C15.1667 7 14.4583 7.29167 13.875 7.875C13.2917 8.45833 13 9.16667 13 10V14C13 15.2167 12.6083 16.2875 11.825 17.2125C11.0417 18.1375 10.05 18.7083 8.85 18.925C8.65 19.5417 8.2875 20.0417 7.7625 20.425C7.2375 20.8083 6.65 21 6 21ZM4.4 9L3 7.6L4.575 6L3 4.425L4.4 3L6 4.6L7.575 3L9 4.425L7.4 6L9 7.6L7.575 9L6 7.425L4.4 9Z" fill="currentColor"/>
                                 </svg>
                               ),
                             },
@@ -842,8 +880,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                               value: 'solution',
                               label: '해결방안',
                               icon: (
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                  <path d="M8 2L9.5 5.5L13.5 6L10.5 8.5L11.5 12.5L8 10.5L4.5 12.5L5.5 8.5L2.5 6L6.5 5.5L8 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={topEvent1Tab === 'solution' ? 'text-purple-400' : 'text-gray-600'}>
+                                  <path d="M12 22C11.45 22 10.9792 21.8042 10.5875 21.4125C10.1958 21.0208 10 20.55 10 20H14C14 20.55 13.8042 21.0208 13.4125 21.4125C13.0208 21.8042 12.55 22 12 22ZM8 19V17H16V19H8ZM8.25 16C7.1 15.3167 6.1875 14.4 5.5125 13.25C4.8375 12.1 4.5 10.85 4.5 9.5C4.5 7.41667 5.22917 5.64583 6.6875 4.1875C8.14583 2.72917 9.91667 2 12 2C14.0833 2 15.8542 2.72917 17.3125 4.1875C18.7708 5.64583 19.5 7.41667 19.5 9.5C19.5 10.85 19.1625 12.1 18.4875 13.25C17.8125 14.4 16.9 15.3167 15.75 16H8.25ZM8.85 14H15.15C15.9 13.4667 16.4792 12.8083 16.8875 12.025C17.2958 11.2417 17.5 10.4 17.5 9.5C17.5 7.96667 16.9667 6.66667 15.9 5.6C14.8333 4.53333 13.5333 4 12 4C10.4667 4 9.16667 4.53333 8.1 5.6C7.03333 6.66667 6.5 7.96667 6.5 9.5C6.5 10.4 6.70417 11.2417 7.1125 12.025C7.52083 12.8083 8.1 13.4667 8.85 14Z" fill="currentColor"/>
                                 </svg>
                               ),
                             },
@@ -962,11 +1000,12 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
 
                 {/* 2Depth: Top Event #2 */}
-                <div id="top-event-2" className="border border-[#e5e7eb] rounded-[6px] overflow-hidden">
+                <div id="top-event-2" className={`border rounded-[6px] overflow-hidden transition-colors ${expandedSections['top-event-2'] ? 'border-sky-500' : 'border-[#e5e7eb]'}`}>
                   {/* 헤더 - 클릭 가능 */}
                   <button
                     onClick={() => toggleSection('top-event-2')}
@@ -1003,8 +1042,19 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
-                  {expandedSections['top-event-2'] && (
-                    <div className="p-6 space-y-6">
+                  <motion.div
+                    layout={false}
+                    animate={{ 
+                      height: expandedSections['top-event-2'] ? "auto" : 0,
+                      opacity: expandedSections['top-event-2'] ? 1 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    style={{ 
+                      overflow: "hidden"
+                    }}
+                  >
+                    {expandedSections['top-event-2'] && (
+                      <div className="p-6 space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-event-2-summary" className="space-y-3">
                         <h3 className="text-[16px] font-semibold text-[#030712]">이벤트 요약</h3>
@@ -1037,11 +1087,12 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
 
                 {/* 2Depth: Top Event #3 */}
-                <div id="top-event-3" className="border border-[#e5e7eb] rounded-[6px] overflow-hidden">
+                <div id="top-event-3" className={`border rounded-[6px] overflow-hidden transition-colors ${expandedSections['top-event-3'] ? 'border-sky-500' : 'border-[#e5e7eb]'}`}>
                   {/* 헤더 - 클릭 가능 */}
                   <button
                     onClick={() => toggleSection('top-event-3')}
@@ -1078,8 +1129,19 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
-                  {expandedSections['top-event-3'] && (
-                    <div className="p-6 space-y-6">
+                  <motion.div
+                    layout={false}
+                    animate={{ 
+                      height: expandedSections['top-event-3'] ? "auto" : 0,
+                      opacity: expandedSections['top-event-3'] ? 1 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    style={{ 
+                      overflow: "hidden"
+                    }}
+                  >
+                    {expandedSections['top-event-3'] && (
+                      <div className="p-6 space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-event-3-summary" className="space-y-3">
                         <h3 className="text-[16px] font-semibold text-[#030712]">이벤트 요약</h3>
@@ -1112,12 +1174,15 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
               </section>
+              </FadeInUp>
 
               {/* 1Depth Section: SQL Elapsed Time 이상 탐지 */}
-              <section id="sql-elapsed-time" className="bg-white rounded-[8px] p-6 space-y-6">
+              <FadeInUp delay={1.2}>
+                <section id="sql-elapsed-time" className="bg-white rounded-[8px] p-6 space-y-6">
                 <h2 className="text-[18px] font-semibold text-[#030712]">
                   SQL Elapsed Time 이상 탐지
                 </h2>
@@ -1126,7 +1191,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                 </div>
 
                 {/* 2Depth: Top SQL #1 */}
-                <div id="top-sql-1" className="border border-[#e5e7eb] rounded-[6px] overflow-hidden">
+                <div id="top-sql-1" className={`border rounded-[6px] overflow-hidden transition-colors ${expandedSections['top-sql-1'] ? 'border-sky-500' : 'border-[#e5e7eb]'}`}>
                   {/* 헤더 - 클릭 가능 */}
                   <button
                     onClick={() => toggleSection('top-sql-1')}
@@ -1160,8 +1225,19 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
-                  {expandedSections['top-sql-1'] && (
-                    <div className="p-6 space-y-6">
+                  <motion.div
+                    layout={false}
+                    animate={{ 
+                      height: expandedSections['top-sql-1'] ? "auto" : 0,
+                      opacity: expandedSections['top-sql-1'] ? 1 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    style={{ 
+                      overflow: "hidden"
+                    }}
+                  >
+                    {expandedSections['top-sql-1'] && (
+                      <div className="p-6 space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-sql-1-summary" className="space-y-3">
                         <h3 className="text-[16px] font-semibold text-[#030712]">이벤트 요약</h3>
@@ -1194,11 +1270,12 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
 
                 {/* 2Depth: Top SQL #2 */}
-                <div id="top-sql-2" className="border border-[#e5e7eb] rounded-[6px] overflow-hidden">
+                <div id="top-sql-2" className={`border rounded-[6px] overflow-hidden transition-colors ${expandedSections['top-sql-2'] ? 'border-sky-500' : 'border-[#e5e7eb]'}`}>
                   {/* 헤더 - 클릭 가능 */}
                   <button
                     onClick={() => toggleSection('top-sql-2')}
@@ -1232,8 +1309,19 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
-                  {expandedSections['top-sql-2'] && (
-                    <div className="p-6 space-y-6">
+                  <motion.div
+                    layout={false}
+                    animate={{ 
+                      height: expandedSections['top-sql-2'] ? "auto" : 0,
+                      opacity: expandedSections['top-sql-2'] ? 1 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    style={{ 
+                      overflow: "hidden"
+                    }}
+                  >
+                    {expandedSections['top-sql-2'] && (
+                      <div className="p-6 space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-sql-2-summary" className="space-y-3">
                         <h3 className="text-[16px] font-semibold text-[#030712]">이벤트 요약</h3>
@@ -1266,11 +1354,12 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
 
                 {/* 2Depth: Top SQL #3 */}
-                <div id="top-sql-3" className="border border-[#e5e7eb] rounded-[6px] overflow-hidden">
+                <div id="top-sql-3" className={`border rounded-[6px] overflow-hidden transition-colors ${expandedSections['top-sql-3'] ? 'border-sky-500' : 'border-[#e5e7eb]'}`}>
                   {/* 헤더 - 클릭 가능 */}
                   <button
                     onClick={() => toggleSection('top-sql-3')}
@@ -1304,8 +1393,19 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
-                  {expandedSections['top-sql-3'] && (
-                    <div className="p-6 space-y-6">
+                  <motion.div
+                    layout={false}
+                    animate={{ 
+                      height: expandedSections['top-sql-3'] ? "auto" : 0,
+                      opacity: expandedSections['top-sql-3'] ? 1 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    style={{ 
+                      overflow: "hidden"
+                    }}
+                  >
+                    {expandedSections['top-sql-3'] && (
+                      <div className="p-6 space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-sql-3-summary" className="space-y-3">
                         <h3 className="text-[16px] font-semibold text-[#030712]">이벤트 요약</h3>
@@ -1338,9 +1438,11 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </motion.div>
                 </div>
               </section>
+              </FadeInUp>
             </div>
           </div>
 
