@@ -10,6 +10,7 @@ interface ReportCardProps {
   badge?: string | null;
   selected?: boolean;
   variant?: 'full' | 'simplified';
+  onClick?: () => void;
 }
 
 export default function ReportCard({ 
@@ -19,12 +20,17 @@ export default function ReportCard({
   metric, 
   badge, 
   selected = false,
-  variant = 'full'
+  variant = 'full',
+  onClick
 }: ReportCardProps) {
   const router = useRouter();
 
   const handleClick = () => {
-    router.push(`/report/${id}`);
+    if (onClick) {
+      onClick();
+    } else {
+      router.push(`/report/${id}`);
+    }
   };
 
   // Full version (default)
