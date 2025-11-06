@@ -338,11 +338,9 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
   const connectionsRef = useRef<Map<number, number[]>>(new Map()); // RAC 연결 정보 저장
   const previousBlocksRef = useRef<BlockData[]>([]); // 이전 블록 데이터 저장
   type OrbitControlsRef = {
-    object: THREE.Camera;
+    object: THREE.OrthographicCamera;
     target: THREE.Vector3;
-    zoom: number;
     update: () => void;
-    updateProjectionMatrix: () => void;
   };
   const orbitControlsRef = useRef<OrbitControlsRef | null>(null);
 
