@@ -2,18 +2,19 @@
 
 import { useState } from "react";
 import { Highlight, themes } from "prism-react-renderer";
+import type { Language } from "prism-react-renderer";
 import { Copy, Check } from "lucide-react";
 
 type CodeBlockProps = {
   code: string;
-  language?: string;
+  language?: Language;
   showLineNumbers?: boolean;
   onRun?: () => void;
 };
 
 export default function CodeBlock({
   code,
-  language = "sql",
+  language = "sql" as Language,
   showLineNumbers = true,
   onRun,
 }: CodeBlockProps) {
@@ -54,9 +55,9 @@ export default function CodeBlock({
       <Highlight
         theme={themes.nightOwl}
         code={code.trim()}
-        language={language as any}
+        language={language}
       >
-        {({ className, style, tokens, getLineProps, getTokenProps }) => (
+        {({ className, style, tokens, getTokenProps }) => (
           <pre
             className={`${className} m-0 overflow-x-auto p-6 text-[13px] leading-6`}
             style={{ ...style, background: "transparent" }}
