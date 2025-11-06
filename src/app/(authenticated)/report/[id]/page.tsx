@@ -14,9 +14,10 @@ import { mockReports } from "@/data/reportData";
 import ReportCard from "@/components/ui/ReportCard";
 import ReportCalendar from "@/components/ui/ReportCalendar";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import CodeBlock from "@/components/ui/CodeBlock";
 
 const CHART_COLOR_TOTAL = '#7C86FF';
-const CHART_COLOR_TOP3 = '#00D5BE';
+const CHART_COLOR_TOP3 = '#00BCFF';
 const CHART_MINUTES_RANGE = 12;
 
 interface ReportPageProps {
@@ -314,6 +315,11 @@ export default function ReportPage({ params }: ReportPageProps) {
   
   // Top Event #1 Tab 상태
   const [topEvent1Tab, setTopEvent1Tab] = useState<'phenomenon' | 'cause' | 'solution'>('phenomenon');
+  const [topEvent1CauseResults, setTopEvent1CauseResults] = useState<Array<null | { columns: string[]; rows: (string | number)[][] }>>([
+    null,
+    null,
+    null,
+  ]);
 
   // 리포트 날짜 목록 생성 (달력에서 빨간 점 표시용)
   const reportDates = useMemo(() => {
@@ -352,6 +358,7 @@ export default function ReportPage({ params }: ReportPageProps) {
     setFlowSummaryView('diagram');
     // 리포트가 변경되면 다이어그램도 다시 그리기
     setDiagramKey(Date.now());
+    setTopEvent1CauseResults([null, null, null]);
     // 리포트 변경 시 콘텐츠 영역을 맨 위로 스크롤
     const contentArea = document.getElementById('report-content-area');
     if (contentArea) {
@@ -584,6 +591,47 @@ export default function ReportPage({ params }: ReportPageProps) {
       return newState;
     });
   };
+
+  const handleRunTopEvent1Cause = useCallback((index: number) => {
+    setTopEvent1CauseResults((prev) => {
+      const next = [...prev];
+
+      if (index === 0) {
+        next[index] = {
+          columns: ['sequence_owner', 'sequence_name', 'min_value', 'max_value', 'increment_by', 'cache_size', 'last_number', 'order_flag'],
+          rows: [
+            ['APP_ADMIN', 'CUSTOMER_ID_SEQ', 1, 999999999, 1, 50, 48291, 'N'],
+            ['APP_ADMIN', 'ORDER_SEQ', 1, 999999999, 1, 100, 92614, 'Y'],
+            ['PAYMENT', 'TRANSACTION_SEQ', 1000, 999999999, 10, 20, 14560, 'N'],
+          ],
+        };
+      }
+
+      if (index === 1) {
+        next[index] = {
+          columns: ['blocked_sid', 'blocking_sid', 'event', 'wait_seconds'],
+          rows: [
+            [293, 410, 'enq: SQ - contention', 12],
+            [287, 410, 'enq: SQ - contention', 11],
+            [305, 410, 'enq: SQ - contention', 9],
+          ],
+        };
+      }
+
+      if (index === 2) {
+        next[index] = {
+          columns: ['metric', 'value', 'threshold'],
+          rows: [
+            ['CPU Usage (%)', 78, 70],
+            ['Buffer Cache Hit Ratio (%)', 86, 90],
+            ['Shared Pool Free (%)', 12, 15],
+          ],
+        };
+      }
+
+      return next;
+    });
+  }, []);
 
   // 목차 클릭 시 해당 섹션으로 스크롤
   const scrollToSection = (sectionId: string) => {
@@ -846,7 +894,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                     </div>
                     <div className="flex items-center gap-1">
                       <TypingText
-                        text="08:40경, Total Events가 평소 대비 13초(76%) 증가가 확인되었습니다."
+                        text="07:55, Total Events가 평소 대비 43초(4300%) 증가가 확인되었습니다."
                         typingSpeed={30}
                         showCursor={false}
                         loop={false}
@@ -1054,8 +1102,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </span>
                       </div>
                     </div>
-                    <div className="bg-[#dcfce7] text-[12px] font-medium text-[#00a63e] px-2 py-1 rounded-[6px]">
-                      영향도 1.2%
+                    <div className="bg-[#FFE2E2] text-[12px] font-medium text-[#E7000B] px-2 py-1 rounded-[6px]">
+                      영향도 97%
                     </div>
                   </button>
 
@@ -1075,7 +1123,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                       <div className="space-y-6">
                       {/* 3Depth: 이벤트 요약 */}
                       <div id="top-event-1-summary" className="px-6 pt-6 space-y-4">
-                        <h3 className="text-[18px] font-medium text-[#030712]">요약</h3>
+                        <h3 className="text-[18px] font-medium text-gray-900">요약</h3>
                         <div className="space-y-3">
                           {/* 정의 카드 */}
                           <div className="h-[80px] flex items-stretch border border-[#e5e7eb] rounded-[6px] bg-white">
@@ -1114,7 +1162,20 @@ export default function ReportPage({ params }: ReportPageProps) {
                                 <span className="font-semibold text-[#155DFC]">시퀀스 캐시 사용/확대</span>, <span className="font-semibold text-[#155DFC]">(RAC) 순서 보장 해제</span>, <span className="font-semibold text-[#155DFC]">정상적인 호출 횟수 검토(최근 1주일 추이)</span> 확인을 추천드리며,
                               </div>
                               <div className="text-[14px] text-[#1E2939] leading-[1.4]">
-                                자세한 내용은 <span className="font-semibold text-[#030712]">해결 방안</span> 탭을 참조하시기 바랍니다.
+                                자세한 내용은 <span className="inline-flex items-center gap-1 font-bold px-0.5 text-gray-900 align-middle">
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 text-purple-400 align-middle"
+                                    aria-hidden="true"
+                                  >
+                                    <path d="M12 22C11.45 22 10.9792 21.8042 10.5875 21.4125C10.1958 21.0208 10 20.55 10 20H14C14 20.55 13.8042 21.0208 13.4125 21.4125C13.0208 21.8042 12.55 22 12 22ZM8 19V17H16V19H8ZM8.25 16C7.1 15.3167 6.1875 14.4 5.5125 13.25C4.8375 12.1 4.5 10.85 4.5 9.5C4.5 7.41667 5.22917 5.64583 6.6875 4.1875C8.14583 2.72917 9.91667 2 12 2C14.0833 2 15.8542 2.72917 17.3125 4.1875C18.7708 5.64583 19.5 7.41667 19.5 9.5C19.5 10.85 19.1625 12.1 18.4875 13.25C17.8125 14.4 16.9 15.3167 15.75 16H8.25ZM8.85 14H15.15C15.9 13.4667 16.4792 12.8083 16.8875 12.025C17.2958 11.2417 17.5 10.4 17.5 9.5C17.5 7.96667 16.9667 6.66667 15.9 5.6C14.8333 4.53333 13.5333 4 12 4C10.4667 4 9.16667 4.53333 8.1 5.6C7.03333 6.66667 6.5 7.96667 6.5 9.5C6.5 10.4 6.70417 11.2417 7.1125 12.025C7.52083 12.8083 8.1 13.4667 8.85 14Z" fill="currentColor" />
+                                  </svg>
+                                  해결 방안
+                                </span> 탭을 참조하시기 바랍니다.
                               </div>
                             </div>
                           </div>
@@ -1257,8 +1318,118 @@ export default function ReportPage({ params }: ReportPageProps) {
                             </div>
                           )}
                           {topEvent1Tab === 'cause' && (
-                            <div id="top-event-1-cause" className="p-6 flex items-center justify-center text-[#6a7282] min-h-[200px]">
-                              원인 내용 영역
+                            <div id="top-event-1-cause" className="space-y-6">
+                              <div className="space-y-4 rounded-md bg-gray-100 p-6">
+                                <h4 className="text-[18px] font-medium text-gray-900">① 캐시 사이즈가 부족한가?</h4>
+                                <CodeBlock
+                                  language="sql"
+                                  code={`SELECT sequence_owner,sequence_name, min_value, max_value, increment_by, cache_size, last_number, order_flag 
+FROM   dba_sequences
+WHERE  sequence_name IN ('ORDER_SEQ', 'CUSTOMER_ID_SEQ', 'TRANSACTION_SEQ')
+ORDER  BY sequence_name;`}
+                                  onRun={() => handleRunTopEvent1Cause(0)}
+                                />
+                                <div className={`rounded-[6px] ${topEvent1CauseResults[0] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
+                                  {topEvent1CauseResults[0] ? (
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr>
+                                          {topEvent1CauseResults[0]?.columns.map((column, colIndex, cols) => (
+                                            <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                              {column}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {topEvent1CauseResults[0]?.rows.map((row, rowIndex, rows) => (
+                                          <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
+                                            {row.map((value, cellIndex, cells) => (
+                                              <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                                {value}
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  ) : (
+                                    <div className="p-4 text-[14px] text-[#6a7282] min-h-[80px]">
+                                      <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-4 rounded-[8px] border border-[#e5e7eb] bg-white p-6">
+                                <h4 className="text-[18px] font-medium text-gray-900">락 분석 트레이스</h4>
+                                <CodeBlock code="-- 코드 입력 영역" language="sql" onRun={() => handleRunTopEvent1Cause(1)} />
+                                <div className={`rounded-[6px] ${topEvent1CauseResults[1] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
+                                  {topEvent1CauseResults[1] ? (
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr>
+                                          {topEvent1CauseResults[1]?.columns.map((column, colIndex, cols) => (
+                                            <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                              {column}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {topEvent1CauseResults[1]?.rows.map((row, rowIndex, rows) => (
+                                          <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
+                                            {row.map((value, cellIndex, cells) => (
+                                              <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                                {value}
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  ) : (
+                                    <div className="p-4 text-[14px] text-[#6a7282] min-h-[80px]">
+                                      <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-4 rounded-[8px] border border-[#e5e7eb] bg-white p-6">
+                                <h4 className="text-[18px] font-medium text-gray-900">시스템 자원 모니터링</h4>
+                                <CodeBlock code="-- 코드 입력 영역" language="sql" onRun={() => handleRunTopEvent1Cause(2)} />
+                                <div className={`rounded-[6px] ${topEvent1CauseResults[2] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
+                                  {topEvent1CauseResults[2] ? (
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr>
+                                          {topEvent1CauseResults[2]?.columns.map((column, colIndex, cols) => (
+                                            <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                              {column}
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {topEvent1CauseResults[2]?.rows.map((row, rowIndex, rows) => (
+                                          <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
+                                            {row.map((value, cellIndex, cells) => (
+                                              <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                                {value}
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  ) : (
+                                    <div className="p-4 text-[14px] text-[#6a7282] min-h-[80px]">
+                                      <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           )}
                           {topEvent1Tab === 'solution' && (
