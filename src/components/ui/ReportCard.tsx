@@ -29,7 +29,7 @@ export default function ReportCard({
     if (onClick) {
       onClick();
     } else {
-      router.push(`/report/${id}`);
+    router.push(`/report/${id}`);
     }
   };
 

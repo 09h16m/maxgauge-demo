@@ -522,16 +522,8 @@ export default function ReportPage({ params }: ReportPageProps) {
         </div>
       </div>
 
-      {/* Right Container - Report Content */}
-      <div 
-        className="flex flex-col flex-1 overflow-hidden"
-        style={{
-          background: `
-            linear-gradient(180deg, rgba(206, 221, 240, 0) 0%, rgba(206, 221, 240, 0.6) 100%),
-            linear-gradient(180deg, rgba(246, 222, 205, 0.6) 0%, rgba(246, 222, 205, 0) 100%),
-            #F3F4F6
-          `
-        }}>
+        {/* Right Container - Report Content */}
+        <div className="flex flex-col flex-1 overflow-hidden bg-[#F3F4F6]">
           {/* Report Header */}
           <div className="flex items-baseline gap-3 px-6 pt-6 pb-4  flex-shrink-0">
               <h1 className="text-[20px] font-semibold text-[#030712]">
@@ -608,7 +600,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         showCursor={false}
                         loop={false}
                         className="text-[14px]"
-                        variableSpeed={{ min: 30, max: 80 }}
+                        variableSpeed={{ min: 10, max: 60 }}
                         highlightPatterns={[
                           { pattern: /13초\(76%\) 증가/, style: 'font-bold text-blue-500' }
                         ]}
@@ -628,7 +620,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         showCursor={false}
                         loop={false}
                         className="text-[14px]"
-                        variableSpeed={{ min: 30, max: 80 }}
+                        variableSpeed={{ min: 5, max: 40 }}
                         initialDelay={500}
                         highlightPatterns={[
                           { pattern: /88% 점유/, style: 'font-bold text-blue-500' }
@@ -649,7 +641,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         showCursor={false}
                         loop={false}
                         className="text-[14px]"
-                        variableSpeed={{ min: 30, max: 80 }}
+                        variableSpeed={{ min: 5, max: 40 }}
                         initialDelay={1000}
                         highlightPatterns={[
                           { pattern: /32개의 세션/, style: 'font-bold text-blue-500' }
@@ -1181,7 +1173,7 @@ export default function ReportPage({ params }: ReportPageProps) {
               </FadeInUp>
 
               {/* 1Depth Section: SQL Elapsed Time 이상 탐지 */}
-              <FadeInUp delay={1.2}>
+              <FadeInUp delay={0.1}>
                 <section id="sql-elapsed-time" className="bg-white rounded-[8px] p-6 space-y-6">
                 <h2 className="text-[18px] font-semibold text-[#030712]">
                   SQL Elapsed Time 이상 탐지

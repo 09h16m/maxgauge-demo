@@ -69,7 +69,7 @@ const initialNodes: Node[] = [
     type: 'custom',
     sourcePosition: 'right' as Position,
     targetPosition: 'left' as Position,
-    data: { label: 'Total Events', icon: <NodeIcon />, xPosition: 375, nodeType: 'important' },
+    data: { label: 'Total Events', icon: <NodeIcon />, xPosition: 375, nodeType: 'important', subLabel: '2025-11-06 04:45 1초 → 43초' },
     position: { x: 375, y: -30 },
   },
   {
@@ -77,7 +77,7 @@ const initialNodes: Node[] = [
     type: 'custom',
     sourcePosition: 'right' as Position,
     targetPosition: 'left' as Position,
-    data: { label: 'SQL Elapsed Time', icon: <NodeIcon />, xPosition: 375, nodeType: 'important' },
+    data: { label: 'SQL Elapsed Time', icon: <NodeIcon />, xPosition: 375, nodeType: 'important', subLabel: '2025-11-06 04:45 13초 → 441초' },
     position: { x: 375, y: 114 },
   },
   // Layer 2 (x=750)

@@ -9,6 +9,7 @@ interface CustomNodeData {
   xPosition?: number; // x 좌표를 data로 전달
   isLastNode?: boolean; // 마지막 노드 여부
   nodeType?: 'important' | 'understated'; // 노드 타입
+  subLabel?: string; // 노드 아래 텍스트
 }
 
 export default function FlowDiagramCustomNode(props: NodeProps) {
@@ -101,48 +102,63 @@ export default function FlowDiagramCustomNode(props: NodeProps) {
         }
       `}</style>
       
-      <motion.div
-        initial={{ x: -100, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ 
-          duration: 0.4,
-          ease: "easeOut",
-          delay: animationDelay // 노드 ID 기반 순차적 딜레이
-        }}
-        className={`
-          relative px-4 py-3 rounded-lg w-[230px]
-          transition-colors duration-300
-          bg-white text-[#030712] border-2 ${getBorderStyle()}
-        `}
-        style={{ 
-          zIndex: 10,
-          ...(isImportant ? { boxShadow: '0 0 0 6px rgba(43, 127, 255, 0.25)' } : {})
-        }}
-      >
-        <div className="flex items-center justify-start gap-3">
-          {nodeData.icon && (
-            <div
-              className="flex items-center justify-center w-8 h-8 rounded-md bg-[#f3f4f6]"
-              style={{
-                color: isImportant ? '#60a5fa' : '#374151' // blue-400 for important, gray-700 for understated
-              }}
+      <div className="relative">
+        <motion.div
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ 
+            duration: 0.4,
+            ease: "easeOut",
+            delay: animationDelay // 노드 ID 기반 순차적 딜레이
+          }}
+          className={`
+            relative px-4 py-3 rounded-lg w-[230px]
+            transition-colors duration-300
+            bg-white text-[#030712] border-2 ${getBorderStyle()}
+          `}
+          style={{ 
+            zIndex: 10,
+            ...(isImportant ? { boxShadow: '0 0 0 6px rgba(43, 127, 255, 0.25)' } : {})
+          }}
+        >
+          <div className="flex items-center justify-start gap-3">
+            {nodeData.icon && (
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-md bg-[#f3f4f6]"
+                style={{
+                  color: isImportant ? '#60a5fa' : '#374151' // blue-400 for important, gray-700 for understated
+                }}
+              >
+                {nodeData.icon}
+              </div>
+            )}
+            
+            <span
+              className={`text-base ${isImportant ? 'font-semibold' : 'font-medium'} ${
+                isImportant 
+                  ? 'text-[#030712]' 
+                  : 'text-[#6b7280]'
+              }`}
             >
-              {nodeData.icon}
-            </div>
-          )}
-          
-          <span
-            className={`text-base ${isImportant ? 'font-semibold' : 'font-medium'} ${
-              isImportant 
-                ? 'text-[#030712]' 
-                : 'text-[#6b7280]'
-            }`}
-          >
-            {nodeData.label}
-          </span>
-        </div>
+              {nodeData.label}
+            </span>
+          </div>
 
-      </motion.div>
+        </motion.div>
+        
+        {nodeData.subLabel && (
+          <div
+            className="absolute top-full left-0 mt-[12px] pl-2 text-[15px] text-gray-500 whitespace-nowrap"
+            style={{
+              animationDelay: `${animationDelay}s`,
+              opacity: 0,
+              animation: `fadeIn 0.3s ease-out ${animationDelay + 0.4}s forwards`
+            }}
+          >
+            {nodeData.subLabel}
+          </div>
+        )}
+      </div>
 
       {!nodeData.isLastNode && (
         <Handle 
