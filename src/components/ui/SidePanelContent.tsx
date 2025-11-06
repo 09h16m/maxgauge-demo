@@ -3,16 +3,14 @@
 import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import ReportCard from './ReportCard';
+import { mockReports } from '@/data/reportData';
 
 export default function SidePanelContent() {
-  // 샘플 데이터
-  const reports = [
-    { id: 1, server: 'PRODRAC3P', time: '2025-10-06 12:39', metric: 'SQL Elapsed Time', badge: '+3', selected: true },
-    { id: 2, server: 'DB-SERVER-01', time: '2025-10-04 07:55', metric: 'Active Session', badge: null, selected: false },
-    { id: 3, server: 'APP-SERVER-02', time: '2025-10-03 18:21', metric: 'Total Wait Time', badge: '+1', selected: false },
-    { id: 4, server: 'PROD05', time: '2025-10-03 18:21', metric: 'SQL Elapsed Time', badge: null, selected: false },
-    { id: 5, server: 'APP-SERVER-07', time: '2025-10-02 09:21', metric: 'Active Session', badge: null, selected: false },
-  ];
+  // mockReports를 사용하되, 최대 5개까지만 표시
+  const reports = mockReports.slice(0, 5).map((report, index) => ({
+    ...report,
+    selected: index === 0, // 첫 번째 항목만 선택
+  }));
 
   const alarmData = [
     { instance: 'DB-SERVER-01', name: 'CPU', value: '67.56', level: 'Warning', time: '13 14:56:04' },
@@ -74,9 +72,9 @@ export default function SidePanelContent() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {reports.map(report => (
+          {reports.map((report, index) => (
             <ReportCard
-              key={report.id}
+              key={`${report.id}-${index}`}
               id={report.id}
               server={report.server}
               time={report.time}

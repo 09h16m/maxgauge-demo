@@ -229,14 +229,16 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // 선택한 인스턴스에 대한 이상 탐지 이력 데이터 (필터링된 리포트)
+  // 선택한 인스턴스에 대한 이상 탐지 이력 데이터
   const instanceReports = useMemo(() => {
     const serverName = `PRODRAC${block.id}P`;
+    // 같은 인스턴스에 대한 여러 이상 탐지 이벤트를 시뮬레이션
+    // 실제로는 각 이벤트가 다른 시간에 발생했지만, 모두 같은 인스턴스의 이벤트
     return [
-      { id: 1, server: serverName, time: '2025-10-06 12:39', metric: 'SQL Elapsed Time', badge: '+3', selected: true },
-      { id: 2, server: serverName, time: '2025-10-04 07:55', metric: 'Active Session', badge: null, selected: false },
-      { id: 3, server: serverName, time: '2025-10-03 18:21', metric: 'Total Wait Time', badge: '+1', selected: false },
-      { id: 4, server: serverName, time: '2025-10-03 18:21', metric: 'SQL Elapsed Time', badge: null, selected: false },
+      { id: serverName, server: serverName, time: '2025-10-06 12:39', metric: 'SQL Elapsed Time', badge: '+3', selected: true },
+      { id: serverName, server: serverName, time: '2025-10-04 07:55', metric: 'Active Session', badge: null, selected: false },
+      { id: serverName, server: serverName, time: '2025-10-03 18:21', metric: 'Total Wait Time', badge: '+1', selected: false },
+      { id: serverName, server: serverName, time: '2025-10-02 14:10', metric: 'Buffer Busy Wait', badge: null, selected: false },
     ];
   }, [block.id]);
 
@@ -328,9 +330,9 @@ export default function InstanceDetail({ block, onBack }: InstanceDetailProps) {
             </div>
 
             <div className="flex flex-col gap-2">
-              {instanceReports.slice(0, visibleReportsCount).map(report => (
+              {instanceReports.slice(0, visibleReportsCount).map((report, index) => (
                 <ReportCard
-                  key={report.id}
+                  key={`${report.server}-${index}`}
                   id={report.id}
                   server={report.server}
                   time={report.time}

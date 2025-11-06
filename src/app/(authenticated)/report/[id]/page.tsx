@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, use } from "react";
+import { useState, useMemo, useEffect, use, useCallback } from "react";
 import { useReactTable, getCoreRowModel, flexRender, ColumnDef } from "@tanstack/react-table";
-import ReportCard from "@/components/ui/ReportCard";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Tabs from "@/components/ui/Tabs";
 import FlowDiagram from "@/components/ui/FlowDiagram";
@@ -11,28 +10,16 @@ import ReactECharts from 'echarts-for-react';
 import FadeInUp from "@/components/reveal/FadeInUp";
 import { motion } from "framer-motion";
 import TypingText from "@/components/ui/typing-text";
+import { mockReports, ReportData } from "@/data/reportData";
+import ReportCard from "@/components/ui/ReportCard";
+import ReportCalendar from "@/components/ui/ReportCalendar";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 interface ReportPageProps {
   params: Promise<{
     id: string;
   }>;
 }
-
-interface ReportData {
-  id: number;
-  server: string;
-  time: string;
-  metric: string;
-  badge?: string | null;
-}
-
-// 샘플 데이터
-const mockReports: ReportData[] = [
-  { id: 1, server: "DB-SERVER-01", time: "2025-10-04 07:55", metric: "Active Session" },
-  { id: 2, server: "APP-SERVER-02", time: "2025-10-03 18:21", metric: "Total Wait Time", badge: "+1" },
-  { id: 3, server: "DB-SERVER-04", time: "2025-10-03 18:21", metric: "Total Wait Time" },
-  { id: 4, server: "APP-SERVER-07", time: "2025-10-03 18:21", metric: "Total Wait Time" },
-];
 
 // 차트 옵션 생성 함수 (InstanceDetail과 동일한 스타일)
 const getAreaChartOption = (data: number[], times: string[], color = '#00BCFF') => {
@@ -170,16 +157,98 @@ const tableOfContents: TocItem[] = [
 
 export default function ReportPage({ params }: ReportPageProps) {
   const { id } = use(params);
-  const [selectedReportId, setSelectedReportId] = useState<number>(
-    parseInt(id) || mockReports[0].id
-  );
+  const parsedId = Number(id);
+  const reportId = Number.isNaN(parsedId) ? id : String(parsedId);
+  const report = mockReports.find((r) => r.id === reportId || r.server === reportId) ?? {
+    id: String(reportId ?? "unknown"),
+    server: String(reportId ?? "Unknown Instance"),
+    time: new Date().toISOString().replace('T', ' ').slice(0, 16),
+    metric: "Active Session",
+  };
+
+  if (!report) {
+    return (
+      <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#F3F4F6]">
+        <p className="text-sm text-[#6a7282]">리포트를 찾을 수 없습니다.</p>
+      </div>
+    );
+  }
+
+  const reportIdentifier = report.id || report.server;
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const getSeedFromString = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash) + 1;
+  };
+
+  const reportSeed = getSeedFromString(reportIdentifier);
   
+  // 사이드 패널 표시 상태
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
+
+  // 날짜 필터 상태 (URL 쿼리와 동기화)
+  const [selectedFilterDate, setSelectedFilterDateState] = useState<string | null>(searchParams.get('date'));
+
+  useEffect(() => {
+    setSelectedFilterDateState(searchParams.get('date'));
+  }, [searchParams]);
+
+  const handleFilterDateChange = useCallback((date: string | null) => {
+    setSelectedFilterDateState(date);
+    const params = new URLSearchParams(searchParams.toString());
+    if (date) {
+      params.set('date', date);
+    } else {
+      params.delete('date');
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const handleReportNavigation = useCallback((targetId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedFilterDate) {
+      params.set('date', selectedFilterDate);
+    } else {
+      params.delete('date');
+    }
+
+    const query = params.toString();
+    const destination = `/report/${encodeURIComponent(targetId)}` + (query ? `?${query}` : '');
+    router.push(destination);
+  }, [router, searchParams, selectedFilterDate]);
+
   // 이상 탐지 흐름 요약 섹션의 뷰 모드 (다이어그램/타임라인)
   const [flowSummaryView, setFlowSummaryView] = useState<'diagram' | 'timeline'>('diagram');
   const [diagramKey, setDiagramKey] = useState(0);
   
   // Top Event #1 Tab 상태
   const [topEvent1Tab, setTopEvent1Tab] = useState<'phenomenon' | 'cause' | 'solution'>('phenomenon');
+
+  // 리포트 날짜 목록 생성 (달력에서 빨간 점 표시용)
+  const reportDates = useMemo(() => {
+    return mockReports.map(report => report.time);
+  }, []);
+
+  // 날짜별로 필터링된 리포트 목록
+  const filteredReports = useMemo(() => {
+    if (!selectedFilterDate) {
+      return mockReports;
+    }
+    return mockReports.filter(report => {
+      const [reportDate] = report.time.split(' ');
+      return reportDate === selectedFilterDate;
+    });
+  }, [selectedFilterDate]);
 
   // flowSummaryView가 'diagram'으로 변경될 때마다 애니메이션 재실행
   useEffect(() => {
@@ -207,7 +276,7 @@ export default function ReportPage({ params }: ReportPageProps) {
     if (contentArea) {
       contentArea.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [selectedReportId]);
+  }, [reportIdentifier]);
   
   // 2depth 섹션 접기/펼치기 상태 (기본값: 모두 닫힘)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -218,8 +287,6 @@ export default function ReportPage({ params }: ReportPageProps) {
     'top-sql-2': false,
     'top-sql-3': false,
   });
-
-  const selectedReport = mockReports.find((r) => r.id === selectedReportId) || mockReports[0];
 
   // 리포트 ID를 시드로 사용하여 일관된 랜덤 데이터 생성
   const getSeededRandom = (seed: number) => {
@@ -242,19 +309,19 @@ export default function ReportPage({ params }: ReportPageProps) {
   }, []);
 
   const waitCountData = useMemo(() => {
-    const random = getSeededRandom(selectedReportId * 100);
+    const random = getSeededRandom(reportSeed * 100);
     return Array.from({ length: 24 }, () => Math.floor(random() * 50) + 20);
-  }, [selectedReportId]);
+  }, [reportSeed]);
 
   const avgWaitingSessionData = useMemo(() => {
-    const random = getSeededRandom(selectedReportId * 200);
+    const random = getSeededRandom(reportSeed * 200);
     return Array.from({ length: 24 }, () => Math.floor(random() * 40) + 15);
-  }, [selectedReportId]);
+  }, [reportSeed]);
 
   const avgWaitTimeData = useMemo(() => {
-    const random = getSeededRandom(selectedReportId * 300);
+    const random = getSeededRandom(reportSeed * 300);
     return Array.from({ length: 24 }, () => Math.floor(random() * 20) + 5);
-  }, [selectedReportId]);
+  }, [reportSeed]);
 
   // Top 3 Session 테이블 데이터
   const top3SessionData = useMemo(() => [
@@ -279,11 +346,11 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   // Top 3 SQL 테이블 데이터 (리포트 ID에 따라 다른 데이터)
   const top3SqlData = useMemo(() => {
-    const random = getSeededRandom(selectedReportId * 500);
+    const random = getSeededRandom(reportSeed * 500);
     const sqlIds = [
-      `9G${selectedReportId}H3K6RX2VFY`,
-      `4P${selectedReportId}ZQ2M7LAK1C`,
-      `6N${selectedReportId}B7T9QW1D2E`
+      `9G${reportSeed}H3K6RX2VFY`,
+      `4P${reportSeed}ZQ2M7LAK1C`,
+      `6N${reportSeed}B7T9QW1D2E`
     ];
     const sqlTexts = [
       'SELECT COUNT(*) FROM EMP WHERE EMPNO=:B1 AND TYPE=:B2',
@@ -291,9 +358,9 @@ export default function ReportPage({ params }: ReportPageProps) {
       'SELECT * FROM ORDERS WHERE id=:B1'
     ];
     const planHashes = [
-      `13579${selectedReportId}4680`,
-      `56789${selectedReportId}1234`,
-      `19283${selectedReportId}4650`
+      `13579${reportSeed}4680`,
+      `56789${reportSeed}1234`,
+      `19283${reportSeed}4650`
     ];
     
     return [
@@ -325,7 +392,7 @@ export default function ReportPage({ params }: ReportPageProps) {
         elapsedTimePerExec: 0.006 + random() * 0.004
       },
     ];
-  }, [selectedReportId]);
+  }, [reportSeed]);
 
   const top3SqlColumns: ColumnDef<typeof top3SqlData[0]>[] = useMemo(() => [
     { accessorKey: 'sqlId', header: 'SQL ID', size: 160 },
@@ -448,90 +515,124 @@ export default function ReportPage({ params }: ReportPageProps) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px)] w-full">
-      {/* Left Side Panel - Report List */}
-      <div className="w-[360px] bg-white border-r border-[#e5e7eb] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[20px] font-semibold text-[#030712]">
-              이상 탐지 이력
-            </h2>
-            <button className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[#f3f4f6]">
-              {/* Sidebar toggle icon placeholder */}
-              <div className="w-5 h-5 bg-[#030712] rounded"></div>
-            </button>
-          </div>
-
-          {/* Search Section */}
-          <div className="space-y-4">
-            <h3 className="text-[16px] font-semibold text-[#030712]">검색</h3>
-
-            {/* Search Input */}
-            <div className="bg-[#f3f4f6] rounded-[6px] px-3 py-2 flex items-center gap-2">
-              <div className="w-4 h-4 bg-[#99a1af] rounded-full"></div>
-              <input
-                type="text"
-                placeholder="인스턴스/리포트 검색"
-                className="flex-1 bg-transparent text-[14px] text-[#6a7282] outline-none placeholder:text-[#6a7282]"
-              />
-            </div>
-
-            {/* Calendar Placeholder */}
-            <div className="border border-[#e5e7eb] rounded-[6px] p-4">
-              <div className="text-center text-[16px] font-semibold text-[#030712] mb-3">
-                October 2025
+    <div className="flex h-[calc(100vh-56px)] w-full bg-[#F3F4F6]">
+        {/* Left Side Panel */}
+        <motion.div
+          initial={false}
+          animate={{
+            width: isSidePanelOpen ? 360 : 0,
+            opacity: isSidePanelOpen ? 1 : 0,
+          }}
+          transition={{
+            duration: 0.3,
+            ease: [0.25, 0.46, 0.45, 0.94],
+          }}
+          className="bg-white border-r border-[#e5e7eb] flex flex-col overflow-hidden flex-shrink-0"
+        >
+          {isSidePanelOpen && (
+            <>
+              {/* Panel Header */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
+                <h2 className="text-[20px] font-semibold text-[#030712]">이상 탐지 이력</h2>
+                <button 
+                  onClick={() => setIsSidePanelOpen(false)}
+                  className="w-8 h-8 rounded-[6px] flex items-center justify-center hover:bg-[#f3f4f6] transition-colors"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9.25 18.5H20V5.5H9.25V18.5ZM4 18.5H7.25V5.5H4V18.5ZM22 18.75C22 19.7165 21.2165 20.5 20.25 20.5H3.75C2.7835 20.5 2 19.7165 2 18.75V5.25C2 4.2835 2.7835 3.5 3.75 3.5H20.25C21.2165 3.5 22 4.2835 22 5.25V18.75Z" fill="#6a7282"/>
+                  </svg>
+                </button>
               </div>
-              <div className="bg-[#f3f4f6] h-[200px] rounded-[6px]"></div>
-            </div>
-          </div>
-        </div>
 
-        {/* Report List */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-[16px] font-semibold text-[#030712]">
-              이상 탐지 이력
-            </span>
-            <span className="text-[16px] font-semibold text-[#00bcff]">
-              {mockReports.length}
-            </span>
-          </div>
+              {/* Calendar */}
+              <div className="px-6 pb-6 flex-shrink-0 border-b border-[#e5e7eb]">
+                <ReportCalendar
+                  reportDates={reportDates}
+                  selectedDate={selectedFilterDate}
+                  onDateSelect={handleFilterDateChange}
+                />
+              </div>
 
-          <div className="space-y-2">
-            {mockReports.map((report) => (
-              <ReportCard
-                key={report.id}
-                id={report.id}
-                server={report.server}
-                time={report.time}
-                metric={report.metric}
-                badge={report.badge}
-                selected={report.id === selectedReportId}
-                variant="full"
-                onClick={() => setSelectedReportId(report.id)}
-              />
-            ))}
-          </div>
+              {/* Report Count */}
+              <div className="px-6 py-4 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[16px] font-semibold text-[#030712]">발행된 리포트</span>
+                    <span className="text-[16px] font-semibold text-[#00bcff]">{filteredReports.length}</span>
+                  </div>
+                  {selectedFilterDate && (
+                    <button
+                      onClick={() => handleFilterDateChange(null)}
+                      className="text-[12px] text-[#6a7282] hover:text-[#030712] transition-colors"
+                    >
+                      전체 보기
+                    </button>
+                  )}
+                </div>
+              </div>
 
-          {/* Load More Button */}
-          <button className="w-full mt-4 py-2 text-[14px] font-medium text-[#1e2939] hover:bg-[#f3f4f6] rounded-[6px] flex items-center justify-center gap-2">
-            <span className="text-[16px]">↓</span>
-            더 불러오기
-          </button>
-        </div>
-      </div>
+              {/* Report Cards List */}
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                {filteredReports.length > 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      {filteredReports.map((reportItem) => (
+                        <ReportCard
+                          key={reportItem.id}
+                          id={reportItem.id}
+                          server={reportItem.server}
+                          time={reportItem.time}
+                          metric={reportItem.metric}
+                          badge={reportItem.badge}
+                        selected={reportItem.id === reportIdentifier}
+                        onClick={() => handleReportNavigation(reportItem.id)}
+                        />
+                      ))}
+                    </div>
 
-        {/* Right Container - Report Content */}
-        <div className="flex flex-col flex-1 overflow-hidden bg-[#F3F4F6]">
+                    {/* Load More Button - only show when not filtered */}
+                    {!selectedFilterDate && (
+                      <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-[6px] py-2 text-[14px] font-medium text-[#1e2939] hover:bg-[#f3f4f6] transition-colors">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 3.33334V12.6667M3.33334 8H12.6667" stroke="#1E2939" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span>더 불러오기</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center py-12">
+                    <p className="text-[14px] text-[#6a7282]">해당 날짜에 발행된 리포트가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </motion.div>
+
+        {/* Report Content */}
+        <div className="flex flex-col flex-1 overflow-hidden">
           {/* Report Header */}
-          <div className="flex items-baseline gap-3 px-6 pt-6 pb-4  flex-shrink-0">
-              <h1 className="text-[20px] font-semibold text-[#030712]">
-                {selectedReport.server} 이상 탐지 보고서
-              </h1>
-              <span className="text-[14px] text-[#6a7282]">
-                {selectedReport.time}
-              </span>
+          <div className="flex items-center gap-3 px-6 pt-6 pb-4  flex-shrink-0">
+              {/* Sidebar Toggle Button (when panel is closed) */}
+              {!isSidePanelOpen && (
+                <button
+                  onClick={() => setIsSidePanelOpen(true)}
+                  className="w-8 h-8 rounded-[6px] flex items-center justify-center hover:bg-white transition-colors flex-shrink-0"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9.25 18.5H20V5.5H9.25V18.5ZM4 18.5H7.25V5.5H4V18.5ZM22 18.75C22 19.7165 21.2165 20.5 20.25 20.5H3.75C2.7835 20.5 2 19.7165 2 18.75V5.25C2 4.2835 2.7835 3.5 3.75 3.5H20.25C21.2165 3.5 22 4.2835 22 5.25V18.75Z" fill="#6a7282"/>
+                  </svg>
+                </button>
+              )}
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-[20px] font-semibold text-[#030712]">
+                  {report.server} 이상 탐지 보고서
+                </h1>
+                <span className="text-[14px] text-[#6a7282]">
+                  {report.time}
+                </span>
+              </div>
           </div>
         <div className="flex-1 flex overflow-hidden">
           {/* Report Content Area */}
@@ -669,7 +770,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                         <div className="flex-1">
                           <ReactECharts
-                            key={`wait-count-${selectedReportId}`}
+                            key={`wait-count-${reportIdentifier}`}
                             option={getAreaChartOption(waitCountData, chartTimes, '#00BCFF')}
                             style={{ height: '84px', width: '100%' }}
                             opts={{ renderer: 'svg' }}
@@ -700,7 +801,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                         <div className="flex-1">
                           <ReactECharts
-                            key={`avg-waiting-session-${selectedReportId}`}
+                            key={`avg-waiting-session-${reportIdentifier}`}
                             option={getAreaChartOption(avgWaitingSessionData, chartTimes, '#00BCFF')}
                             style={{ height: '84px', width: '100%' }}
                             opts={{ renderer: 'svg' }}
@@ -731,7 +832,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         </div>
                         <div className="flex-1">
                           <ReactECharts
-                            key={`avg-wait-time-${selectedReportId}`}
+                            key={`avg-wait-time-${reportIdentifier}`}
                             option={getAreaChartOption(avgWaitTimeData, chartTimes, '#00BCFF')}
                             style={{ height: '84px', width: '100%' }}
                             opts={{ renderer: 'svg' }}

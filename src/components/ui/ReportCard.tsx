@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 
 interface ReportCardProps {
-  id: number;
+  id: string;
   server: string;
   time: string;
   metric?: string;
@@ -29,7 +29,8 @@ export default function ReportCard({
     if (onClick) {
       onClick();
     } else {
-    router.push(`/report/${id}`);
+      const target = id || server;
+      router.push(`/report/${encodeURIComponent(target)}`);
     }
   };
 

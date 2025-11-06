@@ -58,11 +58,11 @@ export default function MainPage() {
 
   // 이상 탐지 이력 데이터
   const anomalyReports = [
-    { server: 'DB-SERVER-01', time: '2025-10-04 07:55' },
-    { server: 'DB-SERVER-01', time: '2025-10-04 07:55' },
-    { server: 'DB-SERVER-01', time: '2025-10-04 07:55' },
-    { server: 'DB-SERVER-01', time: '2025-10-04 07:55' },
-    { server: 'DB-SERVER-01', time: '2025-10-04 07:55' },
+    { server: 'DB-SERVER-01', time: '2025-10-06 12:39' },
+    { server: 'DB-SERVER-02', time: '2025-10-05 08:21' },
+    { server: 'DB-SERVER-03', time: '2025-10-04 18:21' },
+    { server: 'DB-SERVER-04', time: '2025-10-03 15:42' },
+    { server: 'APP-SERVER-02', time: '2025-10-02 09:12' },
   ];
 
   // 차트 데이터 상태
@@ -165,8 +165,8 @@ export default function MainPage() {
               >
                 {anomalyReports.map((report, index) => (
                   <ReportCard
-                    key={index}
-                    id={index + 1}
+                    key={`${report.server}-${index}`}
+                    id={report.server}
                     server={report.server}
                     time={report.time}
                     variant="simplified"
