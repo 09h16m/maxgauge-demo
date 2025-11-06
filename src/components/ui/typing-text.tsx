@@ -178,7 +178,7 @@ const TypingText = ({
       return <span className="inline" style={{ color: currentColor }}>{displayedText}</span>;
     }
 
-    let text = displayedText;
+    const text = displayedText;
     const parts: Array<{ text: string; style?: string }> = [];
     let lastIndex = 0;
 

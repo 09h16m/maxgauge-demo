@@ -895,7 +895,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                                       {top3SessionTable.getHeaderGroups().map((headerGroup) => (
                                         <tr key={headerGroup.id}>
                                           {headerGroup.headers.map((header, headerIndex, headers) => {
-                                            const maxWidth = (header.column.columnDef.meta as any)?.maxWidth;
+                                            type ColumnMeta = { maxWidth?: number };
+                                            const maxWidth = (header.column.columnDef.meta as ColumnMeta | undefined)?.maxWidth;
                                             const columnSize = header.getSize();
                                             const width = maxWidth ? `${maxWidth}px` : `${columnSize}px`;
                                             return (
@@ -941,7 +942,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                                       {top3SqlTable.getHeaderGroups().map((headerGroup) => (
                                         <tr key={headerGroup.id}>
                                           {headerGroup.headers.map((header, headerIndex, headers) => {
-                                            const maxWidth = (header.column.columnDef.meta as any)?.maxWidth;
+                                            type ColumnMeta = { maxWidth?: number };
+                                            const maxWidth = (header.column.columnDef.meta as ColumnMeta | undefined)?.maxWidth;
                                             const columnSize = header.getSize();
                                             const width = maxWidth ? `${maxWidth}px` : `${columnSize}px`;
                                             return (

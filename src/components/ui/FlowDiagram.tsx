@@ -300,7 +300,7 @@ export default function FlowDiagram() {
     [setEdges]
   );
 
-  const onInit = useCallback((reactFlowInstance: any) => {
+  const onInit = useCallback((reactFlowInstance: { fitView: (options?: { padding?: number; duration?: number }) => void }) => {
     // 초기화 시 즉시 fitView를 호출하여 뷰포트를 설정
     reactFlowInstance.fitView({ padding: 0.1, duration: 0 });
     // 뷰포트 설정 완료 후 표시

@@ -337,7 +337,14 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
   const onBlocksChangeRef = useRef(onBlocksChange);
   const connectionsRef = useRef<Map<number, number[]>>(new Map()); // RAC 연결 정보 저장
   const previousBlocksRef = useRef<BlockData[]>([]); // 이전 블록 데이터 저장
-  const orbitControlsRef = useRef<any>(null);
+  type OrbitControlsRef = {
+    object: THREE.Camera;
+    target: THREE.Vector3;
+    zoom: number;
+    update: () => void;
+    updateProjectionMatrix: () => void;
+  };
+  const orbitControlsRef = useRef<OrbitControlsRef | null>(null);
 
   // 초기 카메라 위치 저장
   const initialCameraPosition = useMemo(() => new THREE.Vector3(-32, 32, 32), []);
@@ -390,7 +397,11 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
       };
 
       // 함수를 외부에서 호출할 수 있도록 window 객체에 임시 저장
-      (window as any).__resetBlock3DCamera = resetCamera;
+      interface WindowWithReset extends Window {
+        __resetBlock3DCamera?: () => void;
+      }
+      const windowWithReset = window as WindowWithReset;
+      windowWithReset.__resetBlock3DCamera = resetCamera;
     }
   }, [onResetCamera, initialCameraPosition, initialTarget]);
 

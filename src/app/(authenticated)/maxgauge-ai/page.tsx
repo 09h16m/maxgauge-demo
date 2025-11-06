@@ -38,8 +38,12 @@ export default function MaxGaugeAIPage() {
 
   const handleResetCamera = () => {
     // window 객체에 저장된 리셋 함수 호출
-    if ((window as any).__resetBlock3DCamera) {
-      (window as any).__resetBlock3DCamera();
+    interface WindowWithReset extends Window {
+      __resetBlock3DCamera?: () => void;
+    }
+    const windowWithReset = window as WindowWithReset;
+    if (windowWithReset.__resetBlock3DCamera) {
+      windowWithReset.__resetBlock3DCamera();
     }
   };
 
