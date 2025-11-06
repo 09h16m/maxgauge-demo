@@ -81,8 +81,11 @@ export default function GNB({ variant = "with-border" }: GNBProps) {
           </div>
         </div>
 
-        {/* 오른쪽 영역: 알림 + 아바타 */}
+        {/* 오른쪽 영역: 버전 + 알림 + 아바타 */}
         <div className="flex items-center justify-end gap-4 h-14 flex-1">
+          {/* 버전 텍스트 */}
+          <span className="text-sm text-gray-600">MaxGauge Demo 6.1.261105</span>
+          
           {/* 알림 버튼 */}
           <button className="w-8 h-8 flex items-center justify-center bg-[#f3f4f6] rounded-full hover:bg-gray-200 transition-colors">
             <Bell className="w-4 h-4 text-gray-700" />

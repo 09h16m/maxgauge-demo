@@ -15,6 +15,10 @@ import ReportCard from "@/components/ui/ReportCard";
 import ReportCalendar from "@/components/ui/ReportCalendar";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
+const CHART_COLOR_TOTAL = '#7C86FF';
+const CHART_COLOR_TOP3 = '#00D5BE';
+const CHART_MINUTES_RANGE = 12;
+
 interface ReportPageProps {
   params: Promise<{
     id: string;
@@ -22,20 +26,60 @@ interface ReportPageProps {
 }
 
 // 차트 옵션 생성 함수 (InstanceDetail과 동일한 스타일)
-const getAreaChartOption = (data: number[], times: string[], color = '#00BCFF') => {
+const getLineChartOption = (
+  times: string[],
+  seriesList: Array<{ name: string; data: number[]; color: string }>,
+  showLegend = false,
+  highlightLastMinutes = false
+) => {
+  const highlightData = highlightLastMinutes && times.length > 0
+    ? [[
+        { xAxis: times[Math.max(times.length - 3, 0)] },
+        { xAxis: times[times.length - 1] },
+      ]]
+    : undefined;
+
   return {
     grid: {
       left: 0,
       right: 0,
-      top: 10,
-      bottom: 0,
+      top: showLegend ? 28 : 10,
+      bottom: 18,
       containLabel: false,
     },
+    legend: showLegend
+      ? {
+          show: true,
+          top: 0,
+          left: 0,
+          itemWidth: 10,
+          itemHeight: 10,
+          icon: 'circle',
+          textStyle: {
+            color: '#6a7282',
+            fontSize: 11,
+          },
+        }
+      : undefined,
     xAxis: {
       type: 'category',
       data: times,
-      show: false,
       boundaryGap: false,
+      axisTick: {
+        show: false,
+      },
+      axisLine: {
+        show: false,
+      },
+      splitLine: {
+        show: false,
+      },
+      axisLabel: {
+        show: true,
+        color: '#6a7282',
+        fontSize: 11,
+        formatter: (value: string, index: number) => (index % 2 === 0 ? value : ''),
+      },
     },
     yAxis: {
       type: 'value',
@@ -43,24 +87,30 @@ const getAreaChartOption = (data: number[], times: string[], color = '#00BCFF') 
       min: 0,
       max: 100,
     },
-    series: [
-      {
-        data: data,
-        type: 'line',
-        smooth: 0.1,
-        symbol: 'none',
-        lineStyle: {
-          color: color,
-          width: 1.5,
-        },
-        itemStyle: {
-          color: color,
-        },
-        areaStyle: {
-          color: '#38bdf820', // Sky-400 with 20% opacity
-        },
+    series: seriesList.map(({ name, data, color }, index) => ({
+      name,
+      data,
+      type: 'line',
+      smooth: 0.15,
+      symbol: 'none',
+      lineStyle: {
+        color,
+        width: 2,
       },
-    ],
+      itemStyle: {
+        color,
+      },
+      markArea: highlightData && index === 0 ? {
+        silent: true,
+        itemStyle: {
+          color: 'rgba(173, 70, 255, 0.1)',
+        },
+        data: highlightData,
+      } : undefined,
+      emphasis: {
+        focus: 'series',
+      },
+    })),
     animation: true,
     animationDuration: 2000,
     animationDurationUpdate: 2000, // 데이터 변경 시에도 애니메이션 재생
@@ -79,7 +129,7 @@ interface TocItem {
 const tableOfContents: TocItem[] = [
   {
     id: 'flow-summary',
-    label: '이상 탐지 흐름 요약',
+    label: '이상 탐지 이벤트 플로우',
   },
   {
     id: 'total-events',
@@ -172,6 +222,45 @@ export default function ReportPage({ params }: ReportPageProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
+  const reportTimestamp = useMemo(() => {
+    if (!report?.time) {
+      return null;
+    }
+    const [datePart, timePart] = report.time.split(' ');
+    if (!datePart || !timePart) {
+      return null;
+    }
+
+    const [yearStr, monthStr, dayStr] = datePart.split('-');
+    const [hourStr, minuteStr] = timePart.split(':');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    const hour = Number(hourStr);
+    const minute = Number(minuteStr);
+
+    if ([year, month, day, hour, minute].some((value) => Number.isNaN(value))) {
+      return null;
+    }
+
+    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  }, [report?.time]);
+
+  const chartTimes = useMemo(() => {
+    if (!reportTimestamp) {
+      return Array.from({ length: CHART_MINUTES_RANGE + 1 }, (_, idx) => `00:${String(idx).padStart(2, '0')}`);
+    }
+
+    const times: string[] = [];
+    for (let i = CHART_MINUTES_RANGE; i >= 0; i--) {
+      const point = new Date(reportTimestamp.getTime() - i * 60_000);
+      const hours = String(point.getHours()).padStart(2, '0');
+      const minutes = String(point.getMinutes()).padStart(2, '0');
+      times.push(`${hours}:${minutes}`);
+    }
+    return times;
+  }, [reportTimestamp]);
+
   const getSeedFromString = (value: string) => {
     let hash = 0;
     for (let i = 0; i < value.length; i += 1) {
@@ -219,7 +308,7 @@ export default function ReportPage({ params }: ReportPageProps) {
     router.push(destination);
   }, [router, searchParams, selectedFilterDate]);
 
-  // 이상 탐지 흐름 요약 섹션의 뷰 모드 (다이어그램/타임라인)
+  // 이상 탐지 이벤트 플로우 섹션의 뷰 모드 (다이어그램/타임라인)
   const [flowSummaryView, setFlowSummaryView] = useState<'diagram' | 'timeline'>('diagram');
   const [diagramKey, setDiagramKey] = useState(0);
   
@@ -289,31 +378,100 @@ export default function ReportPage({ params }: ReportPageProps) {
     };
   };
 
-  // 차트 데이터 생성 (리포트 ID에 따라 다른 데이터)
-  const chartTimes = useMemo(() => {
-    const times: string[] = [];
-    for (let i = 23; i >= 0; i--) {
-      const hour = String(Math.floor(i / 2)).padStart(2, '0');
-      const minute = i % 2 === 0 ? '00' : '30';
-      times.push(`${hour}:${minute}`);
-    }
-    return times;
-  }, []);
+  const chartPointCount = chartTimes.length || 16;
 
   const waitCountData = useMemo(() => {
     const random = getSeededRandom(reportSeed * 100);
-    return Array.from({ length: 24 }, () => Math.floor(random() * 50) + 20);
-  }, [reportSeed]);
+    return Array.from({ length: chartPointCount }, (_, index) => {
+      // 마지막 3분에 점진적으로 급증하는 패턴
+      const lastThreeIndex = chartPointCount - 3;
+      if (index >= lastThreeIndex) {
+        // 마지막 3분: 점진적으로 증가
+        const progressInLastThree = index - lastThreeIndex; // 0, 1, 2
+        if (progressInLastThree === 0) {
+          return Math.floor(random() * 5) + 70; // 70~74
+        } else if (progressInLastThree === 1) {
+          return Math.floor(random() * 5) + 80; // 80~84
+        } else {
+          return Math.floor(random() * 5) + 90; // 90~94
+        }
+      } else {
+        // 처음 9~10분: 40~60 사이 중간 값
+        return Math.floor(random() * 20) + 40;
+      }
+    });
+  }, [reportSeed, chartPointCount]);
+
+  const waitCountComparisonData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 105);
+    return waitCountData.map((value) => {
+      // Total Event의 80~90% 수준으로 유지
+      const ratio = 0.8 + random() * 0.1; // 0.8 ~ 0.9
+      return Math.round(value * ratio);
+    });
+  }, [reportSeed, waitCountData]);
 
   const avgWaitingSessionData = useMemo(() => {
     const random = getSeededRandom(reportSeed * 200);
-    return Array.from({ length: 24 }, () => Math.floor(random() * 40) + 15);
-  }, [reportSeed]);
+    return Array.from({ length: chartPointCount }, (_, index) => {
+      // 마지막 3분에 점진적으로 급증하는 패턴
+      const lastThreeIndex = chartPointCount - 3;
+      if (index >= lastThreeIndex) {
+        // 마지막 3분: 점진적으로 증가
+        const progressInLastThree = index - lastThreeIndex; // 0, 1, 2
+        if (progressInLastThree === 0) {
+          return Math.floor(random() * 5) + 70; // 70~74
+        } else if (progressInLastThree === 1) {
+          return Math.floor(random() * 5) + 80; // 80~84
+        } else {
+          return Math.floor(random() * 5) + 90; // 90~94
+        }
+      } else {
+        // 처음 9~10분: 40~60 사이 중간 값
+        return Math.floor(random() * 20) + 40;
+      }
+    });
+  }, [reportSeed, chartPointCount]);
+
+  const avgWaitingSessionComparisonData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 205);
+    return avgWaitingSessionData.map((value) => {
+      // Total Event의 80~90% 수준으로 유지
+      const ratio = 0.8 + random() * 0.1; // 0.8 ~ 0.9
+      return Math.round(value * ratio);
+    });
+  }, [reportSeed, avgWaitingSessionData]);
 
   const avgWaitTimeData = useMemo(() => {
     const random = getSeededRandom(reportSeed * 300);
-    return Array.from({ length: 24 }, () => Math.floor(random() * 20) + 5);
-  }, [reportSeed]);
+    return Array.from({ length: chartPointCount }, (_, index) => {
+      // 마지막 3분에 점진적으로 급증하는 패턴
+      const lastThreeIndex = chartPointCount - 3;
+      if (index >= lastThreeIndex) {
+        // 마지막 3분: 점진적으로 증가
+        const progressInLastThree = index - lastThreeIndex; // 0, 1, 2
+        if (progressInLastThree === 0) {
+          return Math.floor(random() * 5) + 70; // 70~74
+        } else if (progressInLastThree === 1) {
+          return Math.floor(random() * 5) + 80; // 80~84
+        } else {
+          return Math.floor(random() * 5) + 90; // 90~94
+        }
+      } else {
+        // 처음 9~10분: 40~60 사이 중간 값
+        return Math.floor(random() * 20) + 40;
+      }
+    });
+  }, [reportSeed, chartPointCount]);
+
+  const avgWaitTimeComparisonData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 305);
+    return avgWaitTimeData.map((value) => {
+      // Total Event의 80~90% 수준으로 유지
+      const ratio = 0.8 + random() * 0.1; // 0.8 ~ 0.9
+      return Math.round(value * ratio);
+    });
+  }, [reportSeed, avgWaitTimeData]);
 
   // Top 3 Session 테이블 데이터
   const top3SessionData = useMemo(() => [
@@ -631,12 +789,12 @@ export default function ReportPage({ params }: ReportPageProps) {
           <div className="flex-1 overflow-y-auto" id="report-content-area">
             {/* Report Content Cards */}
             <div className="pt-4 pb-6 pr-4 pl-6 space-y-4">
-              {/* 1Depth Section: 이상 탐지 흐름 요약 */}
+              {/* 1Depth Section: 이상 탐지 이벤트 플로우 */}
               <FadeInUp delay={0.1}>
                 <section id="flow-summary" className="bg-white rounded-[8px] p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-[18px] font-semibold text-[#030712]">
-                    이상 탐지 흐름 요약
+                    이상 탐지 이벤트 플로우
                   </h2>
                   <SegmentedControl
                     options={[
@@ -748,11 +906,21 @@ export default function ReportPage({ params }: ReportPageProps) {
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {/* Wait Count 차트 */}
                   <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
-                    <div className="flex items-center h-6">
+                    <div className="flex items-center h-6 justify-between">
                       <span className="text-sm font-medium text-[#030712]">Wait Count</span>
+                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_TOTAL }} />
+                          Total Event
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_TOP3 }} />
+                          Top 3 Event
+                        </span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <div className="flex gap-2 h-[84px]">
+                      <div className="flex gap-2 h-[180px]">
                         <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
                           <span>100</span>
                           <span>75</span>
@@ -763,27 +931,35 @@ export default function ReportPage({ params }: ReportPageProps) {
                         <div className="flex-1">
                           <ReactECharts
                             key={`wait-count-${reportIdentifier}`}
-                            option={getAreaChartOption(waitCountData, chartTimes, '#00BCFF')}
-                            style={{ height: '84px', width: '100%' }}
+                            option={getLineChartOption(chartTimes, [
+                              { name: 'Total Event', data: waitCountData, color: CHART_COLOR_TOTAL },
+                              { name: 'Top 3 Event', data: waitCountComparisonData, color: CHART_COLOR_TOP3 },
+                            ], false, true)}
+                            style={{ height: '180px', width: '100%' }}
                             opts={{ renderer: 'svg' }}
                           />
                         </div>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-[#6a7282] pl-10">
-                        <span>{chartTimes[0] || '00:00'}</span>
-                        <span>{chartTimes[Math.floor(chartTimes.length / 2)] || '12:00'}</span>
-                        <span>{chartTimes[chartTimes.length - 1] || '23:30'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* AVG Waiting Session 차트 */}
                   <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
-                    <div className="flex items-center h-6">
+                    <div className="flex items-center h-6 justify-between">
                       <span className="text-sm font-medium text-[#030712]">AVG Waiting Session</span>
+                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_TOTAL }} />
+                          Total Event
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_TOP3 }} />
+                          Top 3 Event
+                        </span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <div className="flex gap-2 h-[84px]">
+                      <div className="flex gap-2 h-[180px]">
                         <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
                           <span>100</span>
                           <span>75</span>
@@ -794,27 +970,35 @@ export default function ReportPage({ params }: ReportPageProps) {
                         <div className="flex-1">
                           <ReactECharts
                             key={`avg-waiting-session-${reportIdentifier}`}
-                            option={getAreaChartOption(avgWaitingSessionData, chartTimes, '#00BCFF')}
-                            style={{ height: '84px', width: '100%' }}
+                            option={getLineChartOption(chartTimes, [
+                              { name: 'Total Event', data: avgWaitingSessionData, color: CHART_COLOR_TOTAL },
+                              { name: 'Top 3 Event', data: avgWaitingSessionComparisonData, color: CHART_COLOR_TOP3 },
+                            ], false, true)}
+                            style={{ height: '180px', width: '100%' }}
                             opts={{ renderer: 'svg' }}
                           />
                         </div>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-[#6a7282] pl-10">
-                        <span>{chartTimes[0] || '00:00'}</span>
-                        <span>{chartTimes[Math.floor(chartTimes.length / 2)] || '12:00'}</span>
-                        <span>{chartTimes[chartTimes.length - 1] || '23:30'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* AVG Wait Time 차트 */}
                   <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
-                    <div className="flex items-center h-6">
+                    <div className="flex items-center h-6 justify-between">
                       <span className="text-sm font-medium text-[#030712]">AVG Wait Time</span>
+                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_TOTAL }} />
+                          Total Event
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_TOP3 }} />
+                          Top 3 Event
+                        </span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <div className="flex gap-2 h-[84px]">
+                      <div className="flex gap-2 h-[180px]">
                         <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
                           <span>100</span>
                           <span>75</span>
@@ -825,16 +1009,14 @@ export default function ReportPage({ params }: ReportPageProps) {
                         <div className="flex-1">
                           <ReactECharts
                             key={`avg-wait-time-${reportIdentifier}`}
-                            option={getAreaChartOption(avgWaitTimeData, chartTimes, '#00BCFF')}
-                            style={{ height: '84px', width: '100%' }}
+                            option={getLineChartOption(chartTimes, [
+                              { name: 'Total Event', data: avgWaitTimeData, color: CHART_COLOR_TOTAL },
+                              { name: 'Top 3 Event', data: avgWaitTimeComparisonData, color: CHART_COLOR_TOP3 },
+                            ], false, true)}
+                            style={{ height: '180px', width: '100%' }}
                             opts={{ renderer: 'svg' }}
                           />
                         </div>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-[#6a7282] pl-10">
-                        <span>{chartTimes[0] || '00:00'}</span>
-                        <span>{chartTimes[Math.floor(chartTimes.length / 2)] || '12:00'}</span>
-                        <span>{chartTimes[chartTimes.length - 1] || '23:30'}</span>
                       </div>
                     </div>
                   </div>
