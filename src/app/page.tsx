@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import DitherBackground from "@/components/DitherBackground";
 import { Hero } from "@/components/ui/animated-hero";
 import { useRouter } from "next/navigation";
 
@@ -15,9 +14,8 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen flex">
-      {/* 왼쪽: Dither 배경 영역 */}
+      {/* 왼쪽: 배경 영역 */}
       <div className="flex-1 relative bg-black">
-        <DitherBackground opacity={0.2} speed={0.5} />
       </div>
 
       {/* 오른쪽: 로그인 폼 영역 */}
