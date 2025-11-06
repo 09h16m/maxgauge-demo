@@ -10,7 +10,7 @@ import ReactECharts from 'echarts-for-react';
 import FadeInUp from "@/components/reveal/FadeInUp";
 import { motion } from "framer-motion";
 import TypingText from "@/components/ui/typing-text";
-import { mockReports, ReportData } from "@/data/reportData";
+import { mockReports } from "@/data/reportData";
 import ReportCard from "@/components/ui/ReportCard";
 import ReportCalendar from "@/components/ui/ReportCalendar";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -165,14 +165,6 @@ export default function ReportPage({ params }: ReportPageProps) {
     time: new Date().toISOString().replace('T', ' ').slice(0, 16),
     metric: "Active Session",
   };
-
-  if (!report) {
-    return (
-      <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#F3F4F6]">
-        <p className="text-sm text-[#6a7282]">리포트를 찾을 수 없습니다.</p>
-      </div>
-    );
-  }
 
   const reportIdentifier = report.id || report.server;
 
