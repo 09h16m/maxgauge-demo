@@ -190,9 +190,10 @@ interface AnimatedBlockProps extends BlockData {
   onClick: () => void;
   isDimmed: boolean; // 선택되지 않은 블록인 경우
   showTooltip: boolean; // 선택되었거나 선택된 블록과 연결된 경우
+  hasSelection: boolean; // 다른 블록이 선택된 상태인지
 }
 
-function AnimatedBlock({ id, cpuUsage, status, isHovered, onHover, onUnhover, onClick, isDimmed, showTooltip }: AnimatedBlockProps) {
+function AnimatedBlock({ id, cpuUsage, status, isHovered, onHover, onUnhover, onClick, isDimmed, showTooltip, hasSelection }: AnimatedBlockProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [currentHeight, setCurrentHeight] = useState(0.1);
   const [color] = useState(() => new THREE.Color('white'));
@@ -281,8 +282,8 @@ function AnimatedBlock({ id, cpuUsage, status, isHovered, onHover, onUnhover, on
         />
       </RoundedBox>
 
-      {/* 호버 또는 선택 시 툴팁 - Figma 디자인 */}
-      {(isHovered || showTooltip) && (
+      {/* 호버 또는 선택 시 툴팁 - Figma 디자인 (빨간색 블록은 선택이 없을 때만 항상 표시) */}
+      {(isHovered || showTooltip || (status === 'critical' && !hasSelection)) && (
         <Html
           position={[0, targetHeight + 1.2, 0]}
           center
@@ -405,36 +406,10 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
   }, [onBlocksChange]);
 
   useEffect(() => {
-    // 초기 연결 정보 생성 (한 번만 실행)
-    const initializeConnections = () => {
-      const connectionsMap = new Map<number, number[]>();
-      
-      for (let i = 0; i < 256; i++) {
-        const connectionCount = Math.floor(Math.random() * 3) + 3; // 3~5개
-        const connections: number[] = [];
-        
-        while (connections.length < connectionCount) {
-          const targetId = Math.floor(Math.random() * 256);
-          // 자기 자신이 아니고, 중복되지 않은 연결만 추가
-          if (targetId !== i && !connections.includes(targetId)) {
-            connections.push(targetId);
-          }
-        }
-        
-        connectionsMap.set(i, connections);
-      }
-      
-      connectionsRef.current = connectionsMap;
-    };
-
-    // 블록 데이터 생성 (CPU, status만 변경, connections는 유지)
+    // 블록 데이터 생성 (CPU, status, connections)
     const generateBlocks = () => {
-      // 최초 실행 시 연결 정보 초기화
-      if (connectionsRef.current.size === 0) {
-        initializeConnections();
-      }
-
-      const newBlocks: BlockData[] = Array.from({ length: 256 }, (_, i) => {
+      // 1단계: CPU 사용률과 상태를 먼저 생성
+      const blockInfo: Array<{ cpuUsage: number; status: BlockData['status'] }> = Array.from({ length: 256 }, (_, i) => {
         const previousBlock = previousBlocksRef.current[i];
         let cpuUsage: number;
 
@@ -478,7 +453,7 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
           }
         }
 
-        // 상태 확률 조정 (warning 4%, critical 3%)
+        // 상태 확률 조정 (warning 2%, critical 1%)
         let status: BlockData['status'] = 'normal';
         
         if (previousBlock) {
@@ -487,15 +462,52 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
         } else {
           // 최초 실행 시에만 새로운 상태 부여
           const abnormalChance = Math.random();
-          if (abnormalChance < 0.04) status = 'warning';      // 4%
-          else if (abnormalChance < 0.07) status = 'critical'; // 3% (0.04~0.07)
+          if (abnormalChance < 0.02) status = 'warning';      // 2%
+          else if (abnormalChance < 0.03) status = 'critical'; // 1% (0.02~0.03)
         }
 
-        // 저장된 연결 정보 사용
-        const connections = connectionsRef.current.get(i) || [];
-
-        return { id: i, cpuUsage, status, connections };
+        return { cpuUsage, status };
       });
+
+      // 2단계: 연결 정보 생성 (최초 실행 시만 또는 재생성이 필요한 경우)
+      if (connectionsRef.current.size === 0) {
+        const connectionsMap = new Map<number, number[]>();
+        
+        for (let i = 0; i < 256; i++) {
+          const currentBlock = blockInfo[i];
+          const connectionCount = Math.floor(Math.random() * 3) + 3; // 3~5개
+          const connections: number[] = [];
+          
+          // 빨간색 블록(critical)인 경우 흰색이 아닌 블록과만 연결
+          const isCritical = currentBlock.status === 'critical';
+          
+          while (connections.length < connectionCount) {
+            const targetId = Math.floor(Math.random() * 256);
+            const targetBlock = blockInfo[targetId];
+            
+            // 자기 자신이 아니고, 중복되지 않은 연결만 추가
+            if (targetId !== i && !connections.includes(targetId)) {
+              // 빨간색 블록인 경우 흰색 블록(CPU <= 10%)과 연결하지 않음
+              if (isCritical && targetBlock.cpuUsage <= 10) {
+                continue; // 흰색 블록이면 스킵
+              }
+              connections.push(targetId);
+            }
+          }
+          
+          connectionsMap.set(i, connections);
+        }
+        
+        connectionsRef.current = connectionsMap;
+      }
+
+      // 3단계: 최종 블록 데이터 생성
+      const newBlocks: BlockData[] = blockInfo.map((info, i) => ({
+        id: i,
+        cpuUsage: info.cpuUsage,
+        status: info.status,
+        connections: connectionsRef.current.get(i) || []
+      }));
 
       // 이전 블록 데이터 저장
       previousBlocksRef.current = newBlocks;
@@ -573,6 +585,7 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
             const isConnected = selectedBlock?.connections.includes(block.id) || false;
             const isDimmed = selectedBlock !== null && !isSelected && !isConnected;
             const showTooltip = selectedBlock !== null && (isSelected || isConnected);
+            const hasSelection = selectedBlock !== null;
             
             return (
               <group key={block.id} position={[x, 0, z]}>
@@ -584,6 +597,7 @@ export default function Block3D({ onBlocksChange, onBlockSelect, selectedBlockId
                   onClick={() => onBlockSelect?.(block.id)}
                   isDimmed={isDimmed}
                   showTooltip={showTooltip}
+                  hasSelection={hasSelection}
                 />
               </group>
             );

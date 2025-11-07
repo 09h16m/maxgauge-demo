@@ -739,21 +739,13 @@ export default function ReportPage({ params }: ReportPageProps) {
   // Top 3 SQL 테이블 데이터 (리포트 ID에 따라 다른 데이터)
   const top3SqlData = useMemo(() => {
     const random = getSeededRandom(reportSeed * 500);
-    const sqlIds = [
-      `9g${reportSeed}h3k6rx2vfy`,
-      `4p${reportSeed}zq2m7lak1c`,
-      `6n${reportSeed}b7t9qw1d2e`
-    ];
+    const sqlIds = ['atk9xmm7cacqf', '03mksgpbguk26', '9g1h3k6rx2vfy'];
     const sqlTexts = [
       'SELECT order_seq.nextval FROM DUAL',
       'INSERT INTO order_history VALUES (order_seq.nextval, :B1, :B2, :B3, :B4, :B5, :B6, :B7, :B8, :B9, :B10)',
       'SELECT sysdate, customer_id_seq.curval'
     ];
-    const planHashes = [
-      `13579${reportSeed}4680`,
-      `56789${reportSeed}1234`,
-      `19283${reportSeed}4650`
-    ];
+    const planHashes = ['1357924680', '5678901234', '1928374650'];
     
     return [
       { 
@@ -1220,7 +1212,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         className="text-[14px]"
                         variableSpeed={{ min: 10, max: 60 }}
                         highlightPatterns={[
-                          { pattern: /13초\(76%\) 증가/, style: 'font-bold text-blue-500' }
+                          { pattern: /43초(4300%) 증가/, style: 'font-bold text-blue-500' }
                         ]}
                       />
                     </div>
