@@ -16,6 +16,20 @@ import ReportCalendar from "@/components/ui/ReportCalendar";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import CodeBlock from "@/components/ui/CodeBlock";
 
+type TopEventCauseTableResult = {
+  type: 'table';
+  columns: string[];
+  rows: (string | number)[][];
+};
+
+type TopEventCauseChartResult = {
+  type: 'chart';
+  categories: string[];
+  values: number[];
+};
+
+type TopEventCauseResult = TopEventCauseTableResult | TopEventCauseChartResult;
+
 const CHART_COLOR_TOTAL = '#7C86FF';
 const CHART_COLOR_TOP3 = '#00BCFF';
 const CHART_MINUTES_RANGE = 12;
@@ -117,6 +131,99 @@ const getLineChartOption = (
     animationDurationUpdate: 2000, // 데이터 변경 시에도 애니메이션 재생
     animationEasing: 'cubicOut',
     animationDelay: (idx: number) => idx * 30, // 각 데이터 포인트마다 30ms씩 딜레이
+  };
+};
+
+const getCauseTrendChartOption = (categories: string[], values: number[]) => {
+  return {
+    grid: {
+      left: 36,
+      right: 16,
+      top: 26,
+      bottom: 30,
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: {
+        color: '#f1f5f9',
+        fontSize: 11,
+      },
+      padding: [8, 10],
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      boundaryGap: false,
+      axisLine: {
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 11,
+        padding: [8, 0, 0, 0],
+      },
+      splitLine: {
+        show: false,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 700,
+      interval: 100,
+      axisLine: {
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 11,
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(148, 163, 184, 0.25)',
+        },
+      },
+    },
+    series: [
+      {
+        type: 'line',
+        data: values,
+        smooth: 0.25,
+        symbol: 'circle',
+        symbolSize: 5,
+        lineStyle: {
+          color: '#00BCFF',
+          width: 2,
+        },
+        itemStyle: {
+          color: '#00BCFF',
+          borderWidth: 1,
+          borderColor: '#ffffff',
+        },
+        areaStyle: {
+          color: 'rgba(56, 189, 248, 0.16)',
+        },
+        emphasis: {
+          focus: 'series',
+        },
+      },
+    ],
+    animation: true,
+    animationDuration: 900,
+    animationEasing: 'cubicOut',
   };
 };
 
@@ -315,7 +422,7 @@ export default function ReportPage({ params }: ReportPageProps) {
   
   // Top Event #1 Tab 상태
   const [topEvent1Tab, setTopEvent1Tab] = useState<'phenomenon' | 'cause' | 'solution'>('phenomenon');
-  const [topEvent1CauseResults, setTopEvent1CauseResults] = useState<Array<null | { columns: string[]; rows: (string | number)[][] }>>([
+  const [topEvent1CauseResults, setTopEvent1CauseResults] = useState<Array<TopEventCauseResult | null>>([
     null,
     null,
     null,
@@ -598,34 +705,33 @@ export default function ReportPage({ params }: ReportPageProps) {
 
       if (index === 0) {
         next[index] = {
+          type: 'table',
           columns: ['sequence_owner', 'sequence_name', 'min_value', 'max_value', 'increment_by', 'cache_size', 'last_number', 'order_flag'],
           rows: [
-            ['APP_ADMIN', 'CUSTOMER_ID_SEQ', 1, 999999999, 1, 50, 48291, 'N'],
+            ['APP_ADMIN', 'CUSTOMER_ID_SEQ', 1, 999999999, 1, 50, 48291, 'Y'],
             ['APP_ADMIN', 'ORDER_SEQ', 1, 999999999, 1, 100, 92614, 'Y'],
-            ['PAYMENT', 'TRANSACTION_SEQ', 1000, 999999999, 10, 20, 14560, 'N'],
+            ['PAYMENT', 'TRANSACTION_SEQ', 1000, 999999999, 10, 20, 14560, 'Y'],
           ],
         };
       }
 
       if (index === 1) {
         next[index] = {
-          columns: ['blocked_sid', 'blocking_sid', 'event', 'wait_seconds'],
+          type: 'table',
+          columns: ['sequence_owner', 'sequence_name', 'order_flag'],
           rows: [
-            [293, 410, 'enq: SQ - contention', 12],
-            [287, 410, 'enq: SQ - contention', 11],
-            [305, 410, 'enq: SQ - contention', 9],
+            ['APP_USER', 'ORDER_SEQ', 'Y'],
+            ['APP_USER', 'CUSTOMER_ID_SEQ', 'Y'],
+            ['APP_USER', 'TRANSACTION_SEQ', 'Y'],
           ],
         };
       }
 
       if (index === 2) {
         next[index] = {
-          columns: ['metric', 'value', 'threshold'],
-          rows: [
-            ['CPU Usage (%)', 78, 70],
-            ['Buffer Cache Hit Ratio (%)', 86, 90],
-            ['Shared Pool Free (%)', 12, 15],
-          ],
+          type: 'chart',
+          categories: ['D-6', 'D-5', 'D-4', 'D-3', 'D-2', 'D-1', 'D-Day'],
+          values: [220, 240, 210, 260, 380, 520, 680],
         };
       }
 
@@ -697,7 +803,7 @@ export default function ReportPage({ params }: ReportPageProps) {
       ? 'pl-[24px] pr-[8px]' 
       : 'pl-[40px] pr-[8px]';
 
-    return (
+  return (
       <div key={item.id}>
         <button 
           onClick={() => scrollToSection(item.id)}
@@ -875,9 +981,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                       * 분석 리포트는 민감도(Sensitivity) 설정에 따라 생성 주기와 발생 가능성이 조정됩니다.
                     </span>
                     <button className="h-6 px-1 bg-[#f3f4f6] rounded-[6px] flex items-center justify-center gap-[10px] text-[12px] font-medium text-[#1e2939] hover:bg-[#e5e7eb] transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 11.5C9.933 11.5 11.5 9.933 11.5 8C11.5 6.067 9.933 4.5 8 4.5C6.067 4.5 4.5 6.067 4.5 8C4.5 9.933 6.067 11.5 8 11.5Z" stroke="#1E2939" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M8 2V4.5M8 11.5V14M14 8H11.5M4.5 8H2M12.5 3.5L10.5 5.5M5.5 10.5L3.5 12.5M12.5 12.5L10.5 10.5M5.5 5.5L3.5 3.5" stroke="#1E2939" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.3662 3.11528C14.6666 2.95723 15.0265 2.96246 15.3223 3.12895L18.165 4.72856L18.2744 4.79985C18.516 4.98097 18.6647 5.26385 18.6738 5.57035L18.751 8.16703L21.0225 9.54008C21.322 9.72112 21.5048 10.0456 21.5049 10.3955V13.6006C21.5049 13.9511 21.3216 14.2761 21.0215 14.4571L18.751 15.8252L18.6719 18.4239C18.6611 18.7731 18.4682 19.0917 18.1641 19.2637L15.3242 20.8702C15.0281 21.0377 14.6673 21.0432 14.3662 20.8848L11.998 19.6387L9.63086 20.8848C9.33049 21.0428 8.97057 21.0376 8.6748 20.8711L5.83203 19.2715C5.52661 19.0996 5.33365 18.7801 5.32324 18.4297L5.24512 15.8321L2.97363 14.459C2.67392 14.278 2.4903 13.9537 2.49023 13.6036V10.3985C2.49023 10.0481 2.6736 9.72304 2.97363 9.54203L5.24414 8.17289L5.32422 5.57524L5.33691 5.44535C5.38523 5.14816 5.56586 4.8858 5.83203 4.73539L8.67285 3.12895L8.78711 3.07426C9.05855 2.96336 9.3676 2.97676 9.63086 3.11528L11.998 4.36039L14.3662 3.11528ZM12.4639 6.37602C12.1725 6.52914 11.8245 6.52919 11.5332 6.37602L9.18262 5.13871L7.30566 6.19926L7.22656 8.77836C7.21612 9.11772 7.0339 9.4292 6.74316 9.60453L4.49023 10.9629V13.0391L6.74609 14.4024L6.85059 14.4737C7.08023 14.6555 7.21969 14.9315 7.22852 15.2286L7.30469 17.8047L9.18066 18.8614L11.5332 17.6241L11.6445 17.5743C11.9104 17.4735 12.2088 17.49 12.4639 17.6241L14.8145 18.8604L16.6895 17.7998L16.7686 15.2207L16.7812 15.0948C16.8271 14.8056 16.9976 14.548 17.252 14.3946L19.5049 13.0362V10.959L17.251 9.5977C16.9603 9.42208 16.7786 9.111 16.7686 8.77153L16.6914 6.19438L14.8154 5.13774L12.4639 6.37602ZM13.999 12C13.999 10.8956 13.1034 10.0003 11.999 10C10.8945 10 9.99902 10.8955 9.99902 12C9.99902 13.1046 10.8945 14 11.999 14C13.1034 13.9998 13.999 13.1045 13.999 12ZM15.999 12C15.999 14.209 14.208 15.9998 11.999 16C9.78988 16 7.99902 14.2092 7.99902 12C7.99902 9.7909 9.78988 8.00004 11.999 8.00004C14.208 8.00028 15.999 9.79105 15.999 12Z" fill="#1E2939"/>
                       </svg>
                       <span className="px-0.5">민감도 변경</span>
                     </button>
@@ -1330,101 +1435,99 @@ ORDER  BY sequence_name;`}
                                   onRun={() => handleRunTopEvent1Cause(0)}
                                 />
                                 <div className={`rounded-[6px] ${topEvent1CauseResults[0] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
-                                  {topEvent1CauseResults[0] ? (
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr>
-                                          {topEvent1CauseResults[0]?.columns.map((column, colIndex, cols) => (
-                                            <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
-                                              {column}
-                                            </th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {topEvent1CauseResults[0]?.rows.map((row, rowIndex, rows) => (
-                                          <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
-                                            {row.map((value, cellIndex, cells) => (
-                                              <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
-                                                {value}
-                                              </td>
-                                            ))}
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  ) : (
-                                    <div className="p-4 text-[14px] text-[#6a7282] min-h-[80px]">
-                                      <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
-                                    </div>
-                                  )}
+                                  {topEvent1CauseResults[0]?.type === 'table' ? (
+                                     <table className="w-full">
+                                       <thead>
+                                         <tr>
+                                           {topEvent1CauseResults[0]?.columns.map((column, colIndex, cols) => (
+                                             <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                               {column}
+                                             </th>
+                                           ))}
+                                         </tr>
+                                       </thead>
+                                       <tbody>
+                                         {topEvent1CauseResults[0]?.rows.map((row, rowIndex, rows) => (
+                                           <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
+                                             {row.map((value, cellIndex, cells) => (
+                                               <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                                 {value}
+                                               </td>
+                                             ))}
+                                           </tr>
+                                         ))}
+                                       </tbody>
+                                     </table>
+                                   ) : topEvent1CauseResults[0] ? null : (
+                                     <div className="flex items-center justify-center p-4 text-[14px] text-[#6a7282] min-h-[120px]">
+                                       <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                     </div>
+                                   )}
                                 </div>
                               </div>
 
-                              <div className="space-y-4 rounded-[8px] border border-[#e5e7eb] bg-white p-6">
-                                <h4 className="text-[18px] font-medium text-gray-900">락 분석 트레이스</h4>
-                                <CodeBlock code="-- 코드 입력 영역" language="sql" onRun={() => handleRunTopEvent1Cause(1)} />
+                              <div className="space-y-4 rounded-md bg-gray-100 p-6">
+                                <h4 className="text-[18px] font-medium text-gray-900">② (RAC) 시퀀스 정렬이 사용되는가?</h4>
+                                <CodeBlock
+                                  language="sql"
+                                  code={`SELECT sequence_owner, sequence_name, order_flag
+FROM   dba_sequences
+WHERE  sequence_name IN ('ORDER_SEQ', 'CUSTOMER_ID_SEQ', 'TRANSACTION_SEQ')
+ORDER  BY sequence_name;`}
+                                  onRun={() => handleRunTopEvent1Cause(1)}
+                                />
                                 <div className={`rounded-[6px] ${topEvent1CauseResults[1] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
-                                  {topEvent1CauseResults[1] ? (
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr>
-                                          {topEvent1CauseResults[1]?.columns.map((column, colIndex, cols) => (
-                                            <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
-                                              {column}
-                                            </th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {topEvent1CauseResults[1]?.rows.map((row, rowIndex, rows) => (
-                                          <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
-                                            {row.map((value, cellIndex, cells) => (
-                                              <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
-                                                {value}
-                                              </td>
-                                            ))}
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  ) : (
-                                    <div className="p-4 text-[14px] text-[#6a7282] min-h-[80px]">
-                                      <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
-                                    </div>
-                                  )}
+                                  {topEvent1CauseResults[1]?.type === 'table' ? (
+                                     <table className="w-full">
+                                       <thead>
+                                         <tr>
+                                           {topEvent1CauseResults[1]?.columns.map((column, colIndex, cols) => (
+                                             <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                               {column}
+                                             </th>
+                                           ))}
+                                         </tr>
+                                       </thead>
+                                       <tbody>
+                                         {topEvent1CauseResults[1]?.rows.map((row, rowIndex, rows) => (
+                                           <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
+                                             {row.map((value, cellIndex, cells) => (
+                                               <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                                 {value}
+                                               </td>
+                                             ))}
+                                           </tr>
+                                         ))}
+                                       </tbody>
+                                     </table>
+                                   ) : topEvent1CauseResults[1] ? null : (
+                                     <div className="flex items-center justify-center p-4 text-[14px] text-[#6a7282] min-h-[120px]">
+                                       <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                     </div>
+                                   )}
                                 </div>
                               </div>
 
-                              <div className="space-y-4 rounded-[8px] border border-[#e5e7eb] bg-white p-6">
-                                <h4 className="text-[18px] font-medium text-gray-900">시스템 자원 모니터링</h4>
-                                <CodeBlock code="-- 코드 입력 영역" language="sql" onRun={() => handleRunTopEvent1Cause(2)} />
+                              <div className="space-y-4 rounded-md bg-gray-100 p-6">
+                                <h4 className="text-[18px] font-medium text-gray-900">③ 잦은 시퀀스 호출로 경합이 확대되었는가?</h4>
+                                <CodeBlock
+                                  language="sql"
+                                  code={`SELECT TO_CHAR(sample_time,'HH24:MI') AS tm, executions
+FROM   v$sqlstats_trend
+WHERE  sql_id = '9G1H3K6RX2VFY';`}
+                                  onRun={() => handleRunTopEvent1Cause(2)}
+                                />
                                 <div className={`rounded-[6px] ${topEvent1CauseResults[2] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
-                                  {topEvent1CauseResults[2] ? (
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr>
-                                          {topEvent1CauseResults[2]?.columns.map((column, colIndex, cols) => (
-                                            <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
-                                              {column}
-                                            </th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {topEvent1CauseResults[2]?.rows.map((row, rowIndex, rows) => (
-                                          <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
-                                            {row.map((value, cellIndex, cells) => (
-                                              <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
-                                                {value}
-                                              </td>
-                                            ))}
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  ) : (
-                                    <div className="p-4 text-[14px] text-[#6a7282] min-h-[80px]">
+                                  {topEvent1CauseResults[2]?.type === 'chart' ? (
+                                    <div className="p-3">
+                                      <ReactECharts
+                                        option={getCauseTrendChartOption(topEvent1CauseResults[2].categories, topEvent1CauseResults[2].values)}
+                                        style={{ height: 185, width: '100%' }}
+                                        opts={{ renderer: 'svg' }}
+                                      />
+                                    </div>
+                                  ) : topEvent1CauseResults[2] ? null : (
+                                    <div className="flex items-center justify-center p-4 text-[14px] text-[#6a7282] min-h-[120px]">
                                       <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
                                     </div>
                                   )}

@@ -21,7 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className={`${pretendard.variable} antialiased`}>
+      <body
+        suppressHydrationWarning
+        className={`${pretendard.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

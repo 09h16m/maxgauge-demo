@@ -21,6 +21,10 @@ export default function CodeBlock({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      console.warn("Clipboard API를 사용할 수 없습니다.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
@@ -70,9 +74,13 @@ export default function CodeBlock({
                   </span>
                 )}
                 <span className="table-cell">
-                  {line.map((token, key) => (
-                    <span key={key} {...getTokenProps({ token, key })} />
-                  ))}
+                {line.map((token, key) => {
+                  const tokenProps = getTokenProps({ token, key });
+                  const { key: _unusedKey, ...restTokenProps } = tokenProps as {
+                    key?: React.Key;
+                  } & React.HTMLAttributes<HTMLSpanElement>;
+                  return <span key={key} {...restTokenProps} />;
+                })}
                 </span>
               </div>
             ))}
