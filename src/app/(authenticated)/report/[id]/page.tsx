@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, use, useCallback } from "react";
+import { useState, useMemo, useEffect, use, useCallback, useRef } from "react";
 import { useReactTable, getCoreRowModel, flexRender, ColumnDef } from "@tanstack/react-table";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Tabs from "@/components/ui/Tabs";
@@ -31,10 +31,12 @@ type TopEventCauseChartResult = {
 type TopEventCauseResult = TopEventCauseTableResult | TopEventCauseChartResult;
 
 const CHART_COLOR_TOTAL = '#7C86FF';
-const CHART_COLOR_TOP3 = '#00BCFF';
+const CHART_COLOR_TOP3 = '#FF8A65';
 const CHART_COLOR_SQL_PRIMARY = '#FF8A65';
 const CHART_COLOR_SQL_SECONDARY = '#FCD34D';
 const CHART_MINUTES_RANGE = 12;
+const CAUSE_TREND_MINUTES_RANGE = 10;
+const SOLUTION_TREND_DAYS_RANGE = 30;
 
 interface ReportPageProps {
   params: Promise<{
@@ -78,6 +80,17 @@ const getLineChartOption = (
           },
         }
       : undefined,
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: {
+        color: '#f1f5f9',
+        fontSize: 11,
+      },
+      padding: [8, 10],
+    },
     xAxis: {
       type: 'category',
       data: times,
@@ -100,22 +113,43 @@ const getLineChartOption = (
     },
     yAxis: {
       type: 'value',
-      show: false,
+      show: true,
       min: 0,
       max: 100,
+      axisLine: {
+        show: false,
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        show: false,
+      },
+      splitLine: {
+        show: true,
+        lineStyle: {
+          color: 'rgba(148, 163, 184, 0.25)',
+        },
+      },
     },
     series: seriesList.map(({ name, data, color }, index) => ({
       name,
       data,
       type: 'line',
-      smooth: 0.15,
-      symbol: 'none',
+      smooth: 0.1,
+      symbol: 'circle',
+      symbolSize: 5,
       lineStyle: {
         color,
         width: 2,
       },
       itemStyle: {
         color,
+        borderWidth: 1,
+        borderColor: '#ffffff',
       },
       markArea: highlightData && index === 0 ? {
         silent: true,
@@ -236,17 +270,232 @@ const getCauseTrendChartOption = (categories: string[], values: number[]) => {
   };
 };
 
-const SOLUTION_TREND_CATEGORIES = [
-  'D-6',
-  'D-5',
-  'D-4',
-  'D-3',
-  'D-2',
-  'D-1',
-  'D-Day',
-];
+const getCauseSQLTrendChartOption = (
+  times: string[],
+  seriesList: Array<{ name: string; data: number[] }>
+) => {
+  const colors = ['#7C86FF', '#00BCFF', '#FF8A65']; // Total, Top3, SQL 컬러 사용
+  
+  const highlightData = times.length > 0
+    ? [[
+        { xAxis: times[Math.max(times.length - 3, 0)] },
+        { xAxis: times[times.length - 1] },
+      ]]
+    : undefined;
 
-const SOLUTION_TREND_VALUES = [280, 295, 310, 340, 420, 520, 640];
+  return {
+    grid: {
+      left: 36,
+      right: 16,
+      top: 40,
+      bottom: 30,
+    },
+    legend: {
+      show: true,
+      top: 0,
+      left: 0,
+      itemWidth: 10,
+      itemHeight: 10,
+      icon: 'circle',
+      textStyle: {
+        color: '#6a7282',
+        fontSize: 11,
+      },
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: {
+        color: '#f1f5f9',
+        fontSize: 11,
+      },
+      padding: [8, 10],
+    },
+    xAxis: {
+      type: 'category',
+      data: times,
+      boundaryGap: false,
+      axisLine: {
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 11,
+        padding: [8, 0, 0, 0],
+      },
+      splitLine: {
+        show: false,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 700,
+      interval: 100,
+      axisLine: {
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 11,
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(148, 163, 184, 0.25)',
+        },
+      },
+    },
+    series: seriesList.map(({ name, data }, index) => ({
+      name,
+      data,
+      type: 'line',
+      smooth: 0.25,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: {
+        color: colors[index % colors.length],
+        width: 2,
+      },
+      itemStyle: {
+        color: colors[index % colors.length],
+        borderWidth: 1,
+        borderColor: '#ffffff',
+      },
+      markArea: highlightData && index === 0 ? {
+        silent: true,
+        itemStyle: {
+          color: 'rgba(173, 70, 255, 0.1)',
+        },
+        data: highlightData,
+      } : undefined,
+      emphasis: {
+        focus: 'series',
+      },
+    })),
+    animation: true,
+    animationDuration: 900,
+    animationEasing: 'cubicOut',
+  };
+};
+
+const getSolutionSQLTrendChartOption = (
+  dates: string[],
+  seriesList: Array<{ name: string; data: number[] }>
+) => {
+  const colors = ['#7C86FF', '#00BCFF', '#FF8A65']; // Total, Top3, SQL 컬러 사용
+
+  return {
+    grid: {
+      left: 36,
+      right: 16,
+      top: 40,
+      bottom: 30,
+    },
+    legend: {
+      show: true,
+      top: 0,
+      left: 0,
+      itemWidth: 10,
+      itemHeight: 10,
+      icon: 'circle',
+      textStyle: {
+        color: '#6a7282',
+        fontSize: 11,
+      },
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0f172a',
+      borderColor: '#1f2937',
+      borderWidth: 1,
+      textStyle: {
+        color: '#f1f5f9',
+        fontSize: 11,
+      },
+      padding: [8, 10],
+    },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      boundaryGap: false,
+      axisLine: {
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 11,
+        padding: [8, 0, 0, 0],
+        formatter: (value: string, index: number) => (index % 3 === 0 ? value : ''),
+      },
+      splitLine: {
+        show: false,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 700,
+      interval: 100,
+      axisLine: {
+        lineStyle: {
+          color: '#d1d5db',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#4b5563',
+        fontSize: 11,
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(148, 163, 184, 0.25)',
+        },
+      },
+    },
+    series: seriesList.map(({ name, data }, index) => ({
+      name,
+      data,
+      type: 'line',
+      smooth: 0.1,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: {
+        color: colors[index % colors.length],
+        width: 2,
+      },
+      itemStyle: {
+        color: colors[index % colors.length],
+        borderWidth: 1,
+        borderColor: '#ffffff',
+      },
+      emphasis: {
+        focus: 'series',
+      },
+    })),
+    animation: true,
+    animationDuration: 900,
+    animationEasing: 'cubicOut',
+  };
+};
 
 // 목차 구조 데이터 (동기화를 위한 단일 소스)
 interface TocItem {
@@ -350,6 +599,29 @@ export default function ReportPage({ params }: ReportPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const reportContentRef = useRef<HTMLDivElement>(null);
+
+  // 리포트 컨텐츠 영역 스크롤 이벤트 핸들러
+  useEffect(() => {
+    const scrollElement = reportContentRef.current;
+    if (!scrollElement) return;
+
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      scrollElement.classList.add('scrolling');
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        scrollElement.classList.remove('scrolling');
+      }, 1000);
+    };
+
+    scrollElement.addEventListener('scroll', handleScroll);
+    return () => {
+      scrollElement.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   const reportTimestamp = useMemo(() => {
     if (!report?.time) {
@@ -390,6 +662,21 @@ export default function ReportPage({ params }: ReportPageProps) {
     return times;
   }, [reportTimestamp]);
 
+  const causeTrendTimes = useMemo(() => {
+    if (!reportTimestamp) {
+      return Array.from({ length: CAUSE_TREND_MINUTES_RANGE + 1 }, (_, idx) => `00:${String(idx).padStart(2, '0')}`);
+    }
+
+    const times: string[] = [];
+    for (let i = CAUSE_TREND_MINUTES_RANGE; i >= 0; i--) {
+      const point = new Date(reportTimestamp.getTime() - i * 60_000);
+      const hours = String(point.getHours()).padStart(2, '0');
+      const minutes = String(point.getMinutes()).padStart(2, '0');
+      times.push(`${hours}:${minutes}`);
+    }
+    return times;
+  }, [reportTimestamp]);
+
   const getSeedFromString = (value: string) => {
     let hash = 0;
     for (let i = 0; i < value.length; i += 1) {
@@ -400,6 +687,92 @@ export default function ReportPage({ params }: ReportPageProps) {
   };
 
   const reportSeed = getSeedFromString(reportIdentifier);
+
+  const causeTrendValues = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 999);
+    const pointCount = CAUSE_TREND_MINUTES_RANGE + 1;
+    return Array.from({ length: pointCount }, (_, index) => {
+      const progress = index / (pointCount - 1);
+      const baseValue = 280;
+      const endValue = 640;
+      const value = baseValue + (endValue - baseValue) * progress;
+      return Math.round(value + (random() - 0.5) * 20);
+    });
+  }, [reportSeed]);
+
+  // '원인' 탭 ③ SQL별 트렌드 데이터 (3개 라인)
+  const causeSQLTrendData = useMemo(() => {
+    const sqlIds = ['atk9xmm7cacqf', '03mksgpbguk26', '9g1h3k6rx2vfy'];
+    const pointCount = CAUSE_TREND_MINUTES_RANGE + 1;
+    
+    return sqlIds.map((sqlId, sqlIndex) => {
+      const random = getSeededRandom(reportSeed * (1000 + sqlIndex * 100));
+      return {
+        name: sqlId,
+        data: Array.from({ length: pointCount }, (_, index) => {
+          const progress = index / (pointCount - 1);
+          const baseValue = 200 + sqlIndex * 50;
+          const endValue = 500 + sqlIndex * 100;
+          const value = baseValue + (endValue - baseValue) * progress;
+          return Math.round(value + (random() - 0.5) * 30);
+        }),
+      };
+    });
+  }, [reportSeed]);
+
+  // '해결방안' 탭 ③ 30일 날짜 레이블
+  const solutionTrendDates = useMemo(() => {
+    if (!reportTimestamp) {
+      return Array.from({ length: SOLUTION_TREND_DAYS_RANGE + 1 }, (_, idx) => {
+        const date = new Date(2025, 0, idx + 1);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${month}/${day}`;
+      });
+    }
+
+    const dates: string[] = [];
+    for (let i = SOLUTION_TREND_DAYS_RANGE; i >= 0; i--) {
+      const point = new Date(reportTimestamp.getTime() - i * 24 * 60 * 60 * 1000);
+      const month = String(point.getMonth() + 1).padStart(2, '0');
+      const day = String(point.getDate()).padStart(2, '0');
+      dates.push(`${month}/${day}`);
+    }
+    return dates;
+  }, [reportTimestamp]);
+
+  // '해결방안' 탭 ③ SQL별 30일 트렌드 데이터
+  const solutionSQLTrendData = useMemo(() => {
+    const sqlIds = ['atk9xmm7cacqf', '03mksgpbguk26', '9g1h3k6rx2vfy'];
+    const pointCount = SOLUTION_TREND_DAYS_RANGE + 1;
+    
+    return sqlIds.map((sqlId, sqlIndex) => {
+      const random = getSeededRandom(reportSeed * (2000 + sqlIndex * 200));
+      
+      // sqlIndex 0, 1은 변동이 크고, sqlIndex 2는 완만
+      const isVolatile = sqlIndex < 2;
+      const baseValue = 250 + sqlIndex * 80;
+      
+      return {
+        name: sqlId,
+        data: Array.from({ length: pointCount }, (_, index) => {
+          if (isVolatile) {
+            // 변동이 큰 라인: 랜덤 변화가 크고 주기적 패턴
+            const wave = Math.sin(index * 0.3) * 120;
+            const noise = (random() - 0.5) * 220;
+            const value = baseValue + wave + noise;
+            return Math.max(100, Math.min(650, Math.round(value)));
+          } else {
+            // 완만한 라인: 변화량 증가, 낮은 값 범위 (0~150)
+            const drift = (index / pointCount) * 20;
+            const noise = (random() - 0.5) * 80;
+            const value = 80 + drift + noise;
+            return Math.max(0, Math.min(180, Math.round(value)));
+          }
+        }),
+      };
+    });
+  }, [reportSeed]);
   
   // 사이드 패널 표시 상태
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
@@ -505,13 +878,13 @@ export default function ReportPage({ params }: ReportPageProps) {
   });
 
   // 리포트 ID를 시드로 사용하여 일관된 랜덤 데이터 생성
-  const getSeededRandom = (seed: number) => {
+  function getSeededRandom(seed: number) {
     let value = seed;
     return () => {
       value = (value * 9301 + 49297) % 233280;
       return value / 233280;
     };
-  };
+  }
 
   const chartPointCount = chartTimes.length || 16;
 
@@ -1146,7 +1519,7 @@ export default function ReportPage({ params }: ReportPageProps) {
           </div>
         <div className="flex-1 flex overflow-hidden">
           {/* Report Content Area */}
-          <div className="flex-1 overflow-y-auto" id="report-content-area">
+          <div ref={reportContentRef} className="flex-1 overflow-y-auto scrollbar-hide-on-idle" id="report-content-area">
             {/* Report Content Cards */}
             <div className="pt-4 pb-6 pr-4 pl-6 space-y-4">
               {/* 1Depth Section: 이상 탐지 이벤트 플로우 */}
@@ -1716,27 +2089,17 @@ ORDER  BY sequence_name;`}
 
                               <div className="space-y-4 rounded-md bg-gray-100 p-6">
                                 <h4 className="text-[18px] font-medium text-gray-900">③ 잦은 시퀀스 호출로 경합이 확대되었는가?</h4>
-                                <CodeBlock
-                                  language="sql"
-                                  code={`SELECT TO_CHAR(sample_time,'HH24:MI') AS tm, executions
-FROM   v$sqlstats_trend
-WHERE  sql_id = '9G1H3K6RX2VFY';`}
-                                  onRun={() => handleRunTopEvent1Cause(2)}
-                                />
-                                <div className={`rounded-[6px] ${topEvent1CauseResults[2] ? 'border border-gray-200 bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
-                                  {topEvent1CauseResults[2]?.type === 'chart' ? (
-                                    <div className="p-3">
-                                      <ReactECharts
-                                        option={getCauseTrendChartOption(topEvent1CauseResults[2].categories, topEvent1CauseResults[2].values)}
-                                        style={{ height: 185, width: '100%' }}
-                                        opts={{ renderer: 'svg' }}
-                                      />
-                                    </div>
-                                  ) : topEvent1CauseResults[2] ? null : (
-                                    <div className="flex items-center justify-center p-4 text-[14px] text-[#6a7282] min-h-[120px]">
-                                      <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
-                                    </div>
-                                  )}
+                                <div className="rounded-[6px] border border-gray-200 bg-white">
+                                  <div className="p-3">
+                                    <ReactECharts
+                                      option={getCauseSQLTrendChartOption(
+                                        causeTrendTimes,
+                                        causeSQLTrendData
+                                      )}
+                                      style={{ height: 185, width: '100%' }}
+                                      opts={{ renderer: 'svg' }}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1766,13 +2129,13 @@ WHERE  sql_id = '9G1H3K6RX2VFY';`}
                               </div>
 
                               <div className="space-y-4 rounded-md bg-gray-100 p-6">
-                                <h4 className="text-[18px] font-medium text-gray-900">③ 정상적인 호출 횟수 검토(최근 1주일 추이)</h4>
-                                <div className="rounded-[6px] border border-gray-200 bg-white overflow-hidden">
+                                <h4 className="text-[18px] font-medium text-gray-900">③ 시퀀스 호출 장기 추이 검토</h4>
+                                <div className="rounded-[6px] border border-gray-200 bg-white">
                                   <div className="p-3">
                                     <ReactECharts
-                                      option={getCauseTrendChartOption(
-                                        SOLUTION_TREND_CATEGORIES,
-                                        SOLUTION_TREND_VALUES
+                                      option={getSolutionSQLTrendChartOption(
+                                        solutionTrendDates,
+                                        solutionSQLTrendData
                                       )}
                                       style={{ height: 185, width: '100%' }}
                                       opts={{ renderer: 'svg' }}
