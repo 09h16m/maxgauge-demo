@@ -32,6 +32,8 @@ type TopEventCauseResult = TopEventCauseTableResult | TopEventCauseChartResult;
 
 const CHART_COLOR_TOTAL = '#7C86FF';
 const CHART_COLOR_TOP3 = '#00BCFF';
+const CHART_COLOR_SQL_PRIMARY = '#FF8A65';
+const CHART_COLOR_SQL_SECONDARY = '#FCD34D';
 const CHART_MINUTES_RANGE = 12;
 
 interface ReportPageProps {
@@ -134,6 +136,13 @@ const getLineChartOption = (
   };
 };
 
+const truncateToTwoDecimals = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+  return Math.trunc(value * 100) / 100;
+};
+
 const getCauseTrendChartOption = (categories: string[], values: number[]) => {
   return {
     grid: {
@@ -226,6 +235,18 @@ const getCauseTrendChartOption = (categories: string[], values: number[]) => {
     animationEasing: 'cubicOut',
   };
 };
+
+const SOLUTION_TREND_CATEGORIES = [
+  'D-6',
+  'D-5',
+  'D-4',
+  'D-3',
+  'D-2',
+  'D-1',
+  'D-Day',
+];
+
+const SOLUTION_TREND_VALUES = [280, 295, 310, 340, 420, 520, 640];
 
 // 목차 구조 데이터 (동기화를 위한 단일 소스)
 interface TocItem {
@@ -587,6 +608,113 @@ export default function ReportPage({ params }: ReportPageProps) {
     });
   }, [reportSeed, avgWaitTimeData]);
 
+  const sqlWaitCountData = useMemo(() => {
+    if (chartPointCount === 0) {
+      return [];
+    }
+    const random = getSeededRandom(reportSeed * 410);
+    const surgeBase = 55 + Math.round(random() * 5);
+    const surgeStep = 9 + Math.round(random() * 4);
+    const lastThreeIndex = Math.max(chartPointCount - 3, 0);
+    return Array.from({ length: chartPointCount }, (_, index) => {
+      if (index < lastThreeIndex) {
+        return 28 + Math.round(random() * 18);
+      }
+      return surgeBase + (index - lastThreeIndex) * surgeStep;
+    });
+  }, [reportSeed, chartPointCount]);
+
+  const sqlWaitCountBaselineData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 415);
+    return sqlWaitCountData.map((value) => {
+      const ratio = 0.72 + random() * 0.12;
+      return Math.round(value * ratio);
+    });
+  }, [reportSeed, sqlWaitCountData]);
+
+  const sqlAvgSessionData = useMemo(() => {
+    if (chartPointCount === 0) {
+      return [];
+    }
+    const random = getSeededRandom(reportSeed * 420);
+    const surgeBase = 32 + Math.round(random() * 4);
+    const surgeStep = 5 + Math.round(random() * 2);
+    const lastThreeIndex = Math.max(chartPointCount - 3, 0);
+    return Array.from({ length: chartPointCount }, (_, index) => {
+      if (index < lastThreeIndex) {
+        return 18 + Math.round(random() * 10);
+      }
+      return surgeBase + (index - lastThreeIndex) * surgeStep;
+    });
+  }, [reportSeed, chartPointCount]);
+
+  const sqlAvgSessionBaselineData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 425);
+    return sqlAvgSessionData.map((value) => {
+      const ratio = 0.7 + random() * 0.12;
+      return Math.round(value * ratio);
+    });
+  }, [reportSeed, sqlAvgSessionData]);
+
+  const sqlAvgWaitTimeData = useMemo(() => {
+    if (chartPointCount === 0) {
+      return [];
+    }
+    const random = getSeededRandom(reportSeed * 430);
+    const surgeBase = 4.2 + random() * 0.5;
+    const surgeIncrement = 0.6 + random() * 0.2;
+    const lastThreeIndex = Math.max(chartPointCount - 3, 0);
+    return Array.from({ length: chartPointCount }, (_, index) => {
+      if (index < lastThreeIndex) {
+        return +(2.6 + random() * 0.9).toFixed(2);
+      }
+      return +(surgeBase + (index - lastThreeIndex) * surgeIncrement).toFixed(2);
+    });
+  }, [reportSeed, chartPointCount]);
+
+  const sqlAvgWaitTimeBaselineData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 435);
+    return sqlAvgWaitTimeData.map((value) => {
+      const ratio = 0.72 + random() * 0.12;
+      return +(value * ratio).toFixed(2);
+    });
+  }, [reportSeed, sqlAvgWaitTimeData]);
+
+  const sqlSummaryEventTime = useMemo(() => {
+    if (!chartTimes.length) {
+      return '--:--';
+    }
+    return chartTimes[chartTimes.length - 1];
+  }, [chartTimes]);
+
+  const sqlSummaryMetrics = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 510);
+    const deltaSeconds = 12 + Math.floor(random() * 10);
+    const increasePercent = 180 + Math.floor(random() * 80);
+    const topShare = 68 + Math.floor(random() * 20);
+    const topExec = +(3.8 + random() * 1.4).toFixed(1);
+    return {
+      deltaSeconds,
+      increasePercent,
+      topShare,
+      topExec,
+    };
+  }, [reportSeed]);
+
+  const sqlTopExecDisplay = useMemo(() => sqlSummaryMetrics.topExec.toFixed(1), [sqlSummaryMetrics.topExec]);
+  const sqlIncreaseHighlightPattern = useMemo(
+    () => new RegExp(`${sqlSummaryMetrics.deltaSeconds}초\\(${sqlSummaryMetrics.increasePercent}%\\) 증가`),
+    [sqlSummaryMetrics.deltaSeconds, sqlSummaryMetrics.increasePercent]
+  );
+  const sqlShareHighlightPattern = useMemo(
+    () => new RegExp(`${sqlSummaryMetrics.topShare}%`),
+    [sqlSummaryMetrics.topShare]
+  );
+  const sqlExecHighlightPattern = useMemo(
+    () => new RegExp(`${sqlTopExecDisplay}초`),
+    [sqlTopExecDisplay]
+  );
+
   // Top 3 Session 테이블 데이터
   const top3SessionData = useMemo(() => [
     { sid: 281, serial: 9123, avgCpu: 72, event: 'enq: SQ - Contention', waitTime: 12.3 },
@@ -612,14 +740,14 @@ export default function ReportPage({ params }: ReportPageProps) {
   const top3SqlData = useMemo(() => {
     const random = getSeededRandom(reportSeed * 500);
     const sqlIds = [
-      `9G${reportSeed}H3K6RX2VFY`,
-      `4P${reportSeed}ZQ2M7LAK1C`,
-      `6N${reportSeed}B7T9QW1D2E`
+      `9g${reportSeed}h3k6rx2vfy`,
+      `4p${reportSeed}zq2m7lak1c`,
+      `6n${reportSeed}b7t9qw1d2e`
     ];
     const sqlTexts = [
-      'SELECT COUNT(*) FROM EMP WHERE EMPNO=:B1 AND TYPE=:B2',
-      'SELECT c1,c2 FROM SALES WHERE dt BETWEEN :B1 AND :B2',
-      'SELECT * FROM ORDERS WHERE id=:B1'
+      'SELECT order_seq.nextval FROM DUAL',
+      'INSERT INTO order_history VALUES (order_seq.nextval, :B1, :B2, :B3, :B4, :B5, :B6, :B7, :B8, :B9, :B10)',
+      'SELECT sysdate, customer_id_seq.curval'
     ];
     const planHashes = [
       `13579${reportSeed}4680`,
@@ -659,13 +787,99 @@ export default function ReportPage({ params }: ReportPageProps) {
   }, [reportSeed]);
 
   const top3SqlColumns: ColumnDef<typeof top3SqlData[0]>[] = useMemo(() => [
-    { accessorKey: 'sqlId', header: 'SQL ID', size: 160 },
-    { accessorKey: 'sqlText', header: 'SQL Text', size: 200 },
-    { accessorKey: 'planHash', header: 'Plan Hash', size: 144 },
-    { accessorKey: 'executions', header: 'Executions', size: 144, meta: { maxWidth: 160 }, cell: ({ getValue }) => <div className="text-right">{getValue() as number}</div> },
-    { accessorKey: 'waitTime', header: 'Wait Time(%)', size: 144, cell: ({ getValue }) => <div className="text-center">{getValue() as number}</div> },
-    { accessorKey: 'elapsedTime', header: 'Elapsed Time(s)', size: 144, meta: { maxWidth: 160 }, cell: ({ getValue }) => <div className="text-right">{getValue() as number}</div> },
-    { accessorKey: 'elapsedTimePerExec', header: 'Elapsed Time/exec(s)', size: 160, meta: { maxWidth: 160 }, cell: ({ getValue }) => <div className="text-right">{getValue() as number}</div> },
+    {
+      accessorKey: 'sqlId',
+      header: 'SQL ID',
+      size: 140,
+      cell: ({ getValue }) => (
+        <div className="overflow-hidden text-ellipsis whitespace-nowrap">{getValue() as string}</div>
+      ),
+    },
+    {
+      accessorKey: 'sqlText',
+      header: 'SQL Text',
+      size: 300,
+      cell: ({ getValue }) => {
+        const rawValue = (getValue() as string) ?? '';
+        const singleLineValue = rawValue.replace(/\s+/g, ' ');
+        return (
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap">{singleLineValue}</div>
+        );
+      },
+    },
+    {
+      accessorKey: 'planHash',
+      header: 'Plan Hash',
+      size: 120,
+      cell: ({ getValue }) => (
+        <div className="overflow-hidden text-ellipsis whitespace-nowrap">{getValue() as string}</div>
+      ),
+    },
+    {
+      accessorKey: 'executions',
+      header: 'Executions',
+      size: 144,
+      meta: { maxWidth: 160 },
+      cell: ({ getValue }) => (
+        <div className="text-right overflow-hidden text-ellipsis whitespace-nowrap">
+          {getValue() as number}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'waitTime',
+      header: 'Wait Time(%)',
+      size: 144,
+      cell: ({ getValue }) => (
+        <div className="text-center overflow-hidden text-ellipsis whitespace-nowrap">
+          {getValue() as number}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'elapsedTime',
+      header: 'Elapsed Time(s)',
+      size: 144,
+      meta: { maxWidth: 160 },
+      cell: ({ getValue }) => {
+        const rawValue = getValue<number>();
+        if (typeof rawValue !== 'number') {
+          return <div className="text-right">-</div>;
+        }
+        const truncated = truncateToTwoDecimals(rawValue);
+        const displayValue =
+          typeof truncated === 'number' && Number.isFinite(truncated)
+            ? truncated.toFixed(2)
+            : rawValue;
+        return (
+          <div className="text-right overflow-hidden text-ellipsis whitespace-nowrap">
+            {displayValue}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'elapsedTimePerExec',
+      header: 'Elapsed Time/exec(s)',
+      size: 160,
+      meta: { maxWidth: 160 },
+      cell: ({ getValue }) => {
+        const rawValue = getValue<number>();
+        if (typeof rawValue !== 'number') {
+          return <div className="text-right">-</div>;
+        }
+        const truncated = truncateToTwoDecimals(rawValue);
+        const displayValue =
+          typeof truncated === 'number' && Number.isFinite(truncated)
+            ? truncated.toFixed(2)
+            : rawValue;
+        return (
+          <div className="text-right overflow-hidden text-ellipsis whitespace-nowrap">
+            {displayValue}
+          </div>
+        );
+      },
+    },
   ], []);
 
   const top3SqlTable = useReactTable({
@@ -1343,7 +1557,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                                             return (
                                               <th
                                                 key={header.id}
-                                                className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${headerIndex !== headers.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}
+                                                className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${headerIndex !== headers.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center whitespace-nowrap`}
                                                 style={{ width: width }}
                                               >
                                                 {flexRender(header.column.columnDef.header, header.getContext())}
@@ -1362,7 +1576,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                                           {row.getVisibleCells().map((cell, cellIndex, cells) => (
                                             <td
                                               key={cell.id}
-                                              className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}
+                                              className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''} overflow-hidden text-ellipsis whitespace-nowrap`}
                                             >
                                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </td>
@@ -1440,7 +1654,7 @@ ORDER  BY sequence_name;`}
                                        <thead>
                                          <tr>
                                            {topEvent1CauseResults[0]?.columns.map((column, colIndex, cols) => (
-                                             <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                              <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center whitespace-nowrap`}>
                                                {column}
                                              </th>
                                            ))}
@@ -1450,7 +1664,7 @@ ORDER  BY sequence_name;`}
                                          {topEvent1CauseResults[0]?.rows.map((row, rowIndex, rows) => (
                                            <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
                                              {row.map((value, cellIndex, cells) => (
-                                               <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                               <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''} overflow-hidden text-ellipsis whitespace-nowrap`}>
                                                  {value}
                                                </td>
                                              ))}
@@ -1482,7 +1696,7 @@ ORDER  BY sequence_name;`}
                                        <thead>
                                          <tr>
                                            {topEvent1CauseResults[1]?.columns.map((column, colIndex, cols) => (
-                                             <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}>
+                                              <th key={column} className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${colIndex !== cols.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center whitespace-nowrap`}>
                                                {column}
                                              </th>
                                            ))}
@@ -1492,7 +1706,7 @@ ORDER  BY sequence_name;`}
                                          {topEvent1CauseResults[1]?.rows.map((row, rowIndex, rows) => (
                                            <tr key={rowIndex} className={`${rowIndex !== rows.length - 1 ? 'border-b border-[#e5e7eb]' : ''} hover:bg-[#f9fafb]`}>
                                              {row.map((value, cellIndex, cells) => (
-                                               <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''}`}>
+                                               <td key={cellIndex} className={`px-3 py-3 text-[14px] text-[#030712] bg-white ${cellIndex !== cells.length - 1 ? 'border-r border-[#e5e7eb]' : ''} overflow-hidden text-ellipsis whitespace-nowrap`}>
                                                  {value}
                                                </td>
                                              ))}
@@ -1517,7 +1731,7 @@ FROM   v$sqlstats_trend
 WHERE  sql_id = '9G1H3K6RX2VFY';`}
                                   onRun={() => handleRunTopEvent1Cause(2)}
                                 />
-                                <div className={`rounded-[6px] ${topEvent1CauseResults[2] ? 'border border-[#d1d5dc] bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
+                                <div className={`rounded-[6px] ${topEvent1CauseResults[2] ? 'border border-gray-200 bg-white' : 'border border-dashed border-[#d1d5db] bg-[#f9fafb]'} overflow-hidden`}>
                                   {topEvent1CauseResults[2]?.type === 'chart' ? (
                                     <div className="p-3">
                                       <ReactECharts
@@ -1536,8 +1750,44 @@ WHERE  sql_id = '9G1H3K6RX2VFY';`}
                             </div>
                           )}
                           {topEvent1Tab === 'solution' && (
-                            <div id="top-event-1-solution" className="p-6 flex items-center justify-center text-[#6a7282] min-h-[200px]">
-                              해결방안 내용 영역
+                            <div id="top-event-1-solution" className="space-y-6">
+                              <div className="space-y-4 rounded-md bg-gray-100 p-6">
+                                <div className="flex flex-col gap-1.5">
+                                <h4 className="text-[18px] font-medium text-gray-900">① 시퀀스 캐시 사용/확대</h4>
+                                <p className="text-[14px] text-gray-600">권장 캐시 크기: 1000 ~ 10000</p>
+                                </div>
+                                <CodeBlock
+                                  language="sql"
+                                  code={`ALTER SEQUENCE EMP_SEQ CACHE 2000;`}
+                                />
+                              </div>
+
+                              <div className="space-y-4 rounded-md bg-gray-100 p-6">
+                                <div className="flex flex-col gap-1.5">
+                                <h4 className="text-[18px] font-medium text-gray-900">② (RAC) 순서 보장 해제</h4>
+                                <p className="text-[14px] text-gray-600">인스턴스간 직렬화를 제거해 경합을 완화. 값의 엄격한 순서 보장이 불필요할 때 적용.</p>
+                                </div>
+                                <CodeBlock
+                                  language="sql"
+                                  code={`ALTER SEQUENCE EMP_SEQ NOORDER;`}
+                                />
+                              </div>
+
+                              <div className="space-y-4 rounded-md bg-gray-100 p-6">
+                                <h4 className="text-[18px] font-medium text-gray-900">③ 정상적인 호출 횟수 검토(최근 1주일 추이)</h4>
+                                <div className="rounded-[6px] border border-gray-200 bg-white overflow-hidden">
+                                  <div className="p-3">
+                                    <ReactECharts
+                                      option={getCauseTrendChartOption(
+                                        SOLUTION_TREND_CATEGORIES,
+                                        SOLUTION_TREND_VALUES
+                                      )}
+                                      style={{ height: 185, width: '100%' }}
+                                      opts={{ renderer: 'svg' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1726,11 +1976,203 @@ WHERE  sql_id = '9G1H3K6RX2VFY';`}
               {/* 1Depth Section: SQL Elapsed Time 이상 탐지 */}
               <FadeInUp delay={0.1}>
                 <section id="sql-elapsed-time" className="bg-white rounded-[8px] p-6 space-y-6">
-                <h2 className="text-[18px] font-semibold text-[#030712]">
-                  SQL Elapsed Time 이상 탐지
-                </h2>
-                <div className="bg-[#f3f4f6] rounded-[6px] p-4 min-h-[150px] flex items-center justify-center text-[#6a7282]">
-                  SQL Elapsed Time 요약 내용 영역
+                <div className="flex items-center justify-between">
+                  <h2 className="text-[18px] font-semibold text-[#030712]">
+                    SQL Elapsed Time 이상 탐지
+                  </h2>
+                  <span className="text-[12px] text-[#6a7282]">
+                    * 최근 15분간 SQL 수행 시간 추세를 기준으로 분석합니다.
+                  </span>
+                </div>
+
+                <div className="bg-[#f3f4f6] rounded-[6px] p-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 flex items-center">
+                      <span className="text-[14px] font-semibold text-[#030712]">
+                        발생 시각
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <TypingText
+                        text={`${sqlSummaryEventTime}에 SQL Elapsed Time이 평소 대비 ${sqlSummaryMetrics.deltaSeconds}초(${sqlSummaryMetrics.increasePercent}%) 증가했습니다.`}
+                        typingSpeed={30}
+                        showCursor={false}
+                        loop={false}
+                        className="text-[14px]"
+                        variableSpeed={{ min: 10, max: 50 }}
+                        highlightPatterns={[
+                          {
+                            pattern: sqlIncreaseHighlightPattern,
+                            style: 'font-bold text-blue-500',
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 flex items-center">
+                      <span className="text-[14px] font-semibold text-[#030712]">
+                        Event 영향도
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <TypingText
+                        text={`상위 3개 SQL이 전체 SQL Elapsed Time의 ${sqlSummaryMetrics.topShare}%를 차지하고 있습니다.`}
+                        typingSpeed={30}
+                        showCursor={false}
+                        loop={false}
+                        className="text-[14px]"
+                        variableSpeed={{ min: 8, max: 45 }}
+                        initialDelay={400}
+                        highlightPatterns={[
+                          {
+                            pattern: sqlShareHighlightPattern,
+                            style: 'font-bold text-blue-500',
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 flex items-center">
+                      <span className="text-[14px] font-semibold text-[#030712]">
+                        Event 분석
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <TypingText
+                        text={`Top SQL #1의 평균 실행 시간이 ${sqlTopExecDisplay}초까지 증가했습니다.`}
+                        typingSpeed={30}
+                        showCursor={false}
+                        loop={false}
+                        className="text-[14px]"
+                        variableSpeed={{ min: 8, max: 45 }}
+                        initialDelay={800}
+                        highlightPatterns={[
+                          {
+                            pattern: sqlExecHighlightPattern,
+                            style: 'font-bold text-blue-500',
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
+                    <div className="flex items-center h-6 justify-between">
+                      <span className="text-sm font-medium text-[#030712]">Wait Count</span>
+                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_PRIMARY }} />
+                          Top SQL
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_SECONDARY }} />
+                          Baseline
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2 h-[180px]">
+                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
+                          <span>90</span>
+                          <span>70</span>
+                          <span>50</span>
+                          <span>30</span>
+                          <span>10</span>
+                        </div>
+                        <div className="flex-1">
+                          <ReactECharts
+                            key={`sql-wait-count-${reportIdentifier}`}
+                            option={getLineChartOption(chartTimes, [
+                              { name: 'Top SQL', data: sqlWaitCountData, color: CHART_COLOR_SQL_PRIMARY },
+                              { name: 'Baseline', data: sqlWaitCountBaselineData, color: CHART_COLOR_SQL_SECONDARY },
+                            ], false, true)}
+                            style={{ height: '180px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
+                    <div className="flex items-center h-6 justify-between">
+                      <span className="text-sm font-medium text-[#030712]">AVG Session</span>
+                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_PRIMARY }} />
+                          Top SQL
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_SECONDARY }} />
+                          Baseline
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2 h-[180px]">
+                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
+                          <span>48</span>
+                          <span>36</span>
+                          <span>24</span>
+                          <span>12</span>
+                          <span>0</span>
+                        </div>
+                        <div className="flex-1">
+                          <ReactECharts
+                            key={`sql-avg-session-${reportIdentifier}`}
+                            option={getLineChartOption(chartTimes, [
+                              { name: 'Top SQL', data: sqlAvgSessionData, color: CHART_COLOR_SQL_PRIMARY },
+                              { name: 'Baseline', data: sqlAvgSessionBaselineData, color: CHART_COLOR_SQL_SECONDARY },
+                            ], false, true)}
+                            style={{ height: '180px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
+                    <div className="flex items-center h-6 justify-between">
+                      <span className="text-sm font-medium text-[#030712]">AVG Wait Time</span>
+                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_PRIMARY }} />
+                          Top SQL
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_SECONDARY }} />
+                          Baseline
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-2 h-[180px]">
+                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
+                          <span>6.0</span>
+                          <span>5.0</span>
+                          <span>4.0</span>
+                          <span>3.0</span>
+                          <span>2.0</span>
+                        </div>
+                        <div className="flex-1">
+                          <ReactECharts
+                            key={`sql-avg-wait-time-${reportIdentifier}`}
+                            option={getLineChartOption(chartTimes, [
+                              { name: 'Top SQL', data: sqlAvgWaitTimeData, color: CHART_COLOR_SQL_PRIMARY },
+                              { name: 'Baseline', data: sqlAvgWaitTimeBaselineData, color: CHART_COLOR_SQL_SECONDARY },
+                            ], false, true)}
+                            style={{ height: '180px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 2Depth: Top SQL #1 */}

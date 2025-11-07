@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Highlight, themes } from "prism-react-renderer";
 import type { Language } from "prism-react-renderer";
 import { Copy, Check } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 type CodeBlockProps = {
   code: string;
@@ -29,6 +30,12 @@ export default function CodeBlock({
       await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+      console.log("Toast 호출됨");
+      toast({
+        title: "복사되었습니다.",
+        duration: 1800,
+      });
+      console.log("Toast 호출 완료");
     } catch (error) {
       console.error("Failed to copy code", error);
     }
