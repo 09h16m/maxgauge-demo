@@ -15,6 +15,7 @@ import ReportCard from "@/components/ui/ReportCard";
 import ReportCalendar from "@/components/ui/ReportCalendar";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import CodeBlock from "@/components/ui/CodeBlock";
+import { Spinner } from "@/components/ui/spinner";
 
 type TopEventCauseTableResult = {
   type: 'table';
@@ -244,7 +245,7 @@ const getCauseTrendChartOption = (categories: string[], values: number[]) => {
       {
         type: 'line',
         data: values,
-        smooth: 0.25,
+        smooth: 0.1,
         symbol: 'circle',
         symbolSize: 5,
         lineStyle: {
@@ -361,7 +362,7 @@ const getCauseSQLTrendChartOption = (
       name,
       data,
       type: 'line',
-      smooth: false,
+      smooth: 0.1,
       symbol: 'circle',
       symbolSize: 5,
       lineStyle: {
@@ -834,6 +835,7 @@ export default function ReportPage({ params }: ReportPageProps) {
     null,
     null,
   ]);
+  const [topEvent1CauseLoading, setTopEvent1CauseLoading] = useState<Array<boolean>>([false, false, false]);
 
   // 리포트 날짜 목록 생성 (달력에서 빨간 점 표시용)
   const reportDates = useMemo(() => {
@@ -1244,36 +1246,45 @@ export default function ReportPage({ params }: ReportPageProps) {
   };
 
   const handleRunTopEvent1Cause = useCallback((index: number) => {
-    setTopEvent1CauseResults((prev) => {
+    // 로딩 상태 시작
+    setTopEvent1CauseLoading((prev) => {
       const next = [...prev];
+      next[index] = true;
+      return next;
+    });
 
-      if (index === 0) {
-        next[index] = {
-          type: 'table',
-          columns: ['sequence_owner', 'sequence_name', 'min_value', 'max_value', 'increment_by', 'cache_size', 'last_number', 'order_flag'],
-          rows: [
-            ['APP_ADMIN', 'CUSTOMER_ID_SEQ', 1, 999999999, 1, 50, 48291, 'Y'],
-            ['APP_ADMIN', 'ORDER_SEQ', 1, 999999999, 1, 100, 92614, 'Y'],
-            ['PAYMENT', 'TRANSACTION_SEQ', 1000, 999999999, 10, 20, 14560, 'Y'],
-          ],
-        };
-      }
+    // 1.5초 후에 결과 표시
+    setTimeout(() => {
+      setTopEvent1CauseResults((prev) => {
+        const next = [...prev];
 
-      if (index === 1) {
-        next[index] = {
-          type: 'table',
-          columns: ['sequence_owner', 'sequence_name', 'order_flag'],
-          rows: [
-            ['APP_USER', 'ORDER_SEQ', 'Y'],
-            ['APP_USER', 'CUSTOMER_ID_SEQ', 'Y'],
-            ['APP_USER', 'TRANSACTION_SEQ', 'Y'],
-          ],
-        };
-      }
+        if (index === 0) {
+          next[index] = {
+            type: 'table',
+            columns: ['sequence_owner', 'sequence_name', 'min_value', 'max_value', 'increment_by', 'cache_size', 'last_number', 'order_flag'],
+            rows: [
+              ['APP_ADMIN', 'CUSTOMER_ID_SEQ', 1, 999999999, 1, 50, 48291, 'Y'],
+              ['APP_ADMIN', 'ORDER_SEQ', 1, 999999999, 1, 100, 92614, 'Y'],
+              ['PAYMENT', 'TRANSACTION_SEQ', 1000, 999999999, 10, 20, 14560, 'Y'],
+            ],
+          };
+        }
 
-      if (index === 2) {
-        next[index] = {
-          type: 'chart',
+        if (index === 1) {
+          next[index] = {
+            type: 'table',
+            columns: ['sequence_owner', 'sequence_name', 'order_flag'],
+            rows: [
+              ['APP_USER', 'ORDER_SEQ', 'Y'],
+              ['APP_USER', 'CUSTOMER_ID_SEQ', 'Y'],
+              ['APP_USER', 'TRANSACTION_SEQ', 'Y'],
+            ],
+          };
+        }
+
+        if (index === 2) {
+          next[index] = {
+            type: 'chart',
           categories: ['D-6', 'D-5', 'D-4', 'D-3', 'D-2', 'D-1', 'D-Day'],
           values: [220, 240, 210, 260, 380, 520, 680],
         };
@@ -1281,6 +1292,14 @@ export default function ReportPage({ params }: ReportPageProps) {
 
       return next;
     });
+
+    // 로딩 상태 종료
+    setTopEvent1CauseLoading((prev) => {
+      const next = [...prev];
+      next[index] = false;
+      return next;
+    });
+    }, 800);
   }, []);
 
   // 목차 클릭 시 해당 섹션으로 스크롤
@@ -2004,7 +2023,11 @@ ORDER  BY sequence_name;`}
                                      </table>
                                    ) : topEvent1CauseResults[0] ? null : (
                                      <div className="flex items-center justify-center p-4 text-[14px] text-[#6a7282] min-h-[120px]">
-                                       <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                       {topEvent1CauseLoading[0] ? (
+                                         <Spinner className="h-6 w-6 text-[#6a7282]" />
+                                       ) : (
+                                         <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                       )}
                                      </div>
                                    )}
                                 </div>
@@ -2046,7 +2069,11 @@ ORDER  BY sequence_name;`}
                                      </table>
                                    ) : topEvent1CauseResults[1] ? null : (
                                      <div className="flex items-center justify-center p-4 text-[14px] text-[#6a7282] min-h-[120px]">
-                                       <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                       {topEvent1CauseLoading[1] ? (
+                                         <Spinner className="h-6 w-6 text-[#6a7282]" />
+                                       ) : (
+                                         <span>코드를 실행하면, 이곳에 코드 실행 결과가 표시됩니다.</span>
+                                       )}
                                      </div>
                                    )}
                                 </div>
