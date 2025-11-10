@@ -1553,7 +1553,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                 </div>
 
                 {/* Summary Box */}
-                <div className="bg-[#f3f4f6] rounded-[6px] p-4 space-y-2">
+                <div className="bg-[#f7fcff] border border-[#B8E6FE] rounded-[6px] p-4 space-y-2">
                   <div className="flex items-center gap-3">
                     <div className="w-24 flex items-center">
                       <span className="text-[14px] font-semibold text-[#030712]">
@@ -1569,7 +1569,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                         className="text-[14px]"
                         variableSpeed={{ min: 10, max: 60 }}
                         highlightPatterns={[
-                          { pattern: /43초(4300%) 증가/, style: 'font-bold text-blue-500' }
+                          { pattern: /43초\(4300%\) 증가/, style: 'font-bold text-blue-500' }
                         ]}
                       />
                     </div>
@@ -2332,7 +2332,7 @@ ORDER  BY sequence_name;`}
                   </span>
                 </div>
 
-                <div className="bg-[#f3f4f6] rounded-[6px] p-4 space-y-2">
+                <div className="bg-[#f7fcff] border border-[#B8E6FE] rounded-[6px] p-4 space-y-2">
                   <div className="flex items-center gap-3">
                     <div className="w-24 flex items-center">
                       <span className="text-[14px] font-semibold text-[#030712]">
