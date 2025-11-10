@@ -32,8 +32,8 @@ type TopEventCauseResult = TopEventCauseTableResult | TopEventCauseChartResult;
 
 const CHART_COLOR_TOTAL = '#7C86FF';
 const CHART_COLOR_TOP3 = '#FF8A65';
-const CHART_COLOR_SQL_PRIMARY = '#FF8A65';
-const CHART_COLOR_SQL_SECONDARY = '#FCD34D';
+const CHART_COLOR_SQL_PRIMARY = '#00BCFF';
+const CHART_COLOR_SQL_SECONDARY = '#FF8A65';
 const CHART_MINUTES_RANGE = 12;
 const CAUSE_TREND_MINUTES_RANGE = 10;
 const SOLUTION_TREND_DAYS_RANGE = 30;
@@ -361,7 +361,7 @@ const getCauseSQLTrendChartOption = (
       name,
       data,
       type: 'line',
-      smooth: 0.25,
+      smooth: false,
       symbol: 'circle',
       symbolSize: 5,
       lineStyle: {
@@ -704,17 +704,30 @@ export default function ReportPage({ params }: ReportPageProps) {
   const causeSQLTrendData = useMemo(() => {
     const sqlIds = ['atk9xmm7cacqf', '03mksgpbguk26', '9g1h3k6rx2vfy'];
     const pointCount = CAUSE_TREND_MINUTES_RANGE + 1;
+    const lastThreeIndex = Math.max(pointCount - 3, 0); // 마지막 3분 시작 인덱스
     
     return sqlIds.map((sqlId, sqlIndex) => {
       const random = getSeededRandom(reportSeed * (1000 + sqlIndex * 100));
       return {
         name: sqlId,
         data: Array.from({ length: pointCount }, (_, index) => {
-          const progress = index / (pointCount - 1);
-          const baseValue = 200 + sqlIndex * 50;
-          const endValue = 500 + sqlIndex * 100;
-          const value = baseValue + (endValue - baseValue) * progress;
-          return Math.round(value + (random() - 0.5) * 30);
+          if (index < lastThreeIndex) {
+            // 처음 8분: 각각 0~70, 40~100, 70~150 범위
+            const stableRanges = [
+              { base: 0, range: 70 },
+              { base: 40, range: 60 },
+              { base: 70, range: 80 },
+            ];
+            const { base, range } = stableRanges[sqlIndex] ?? stableRanges[0];
+            return Math.round(base + random() * range);
+          } else {
+            // 마지막 3분: 급격하게 증가, 최대 700 이하
+            const progressInLastThree = index - lastThreeIndex; // 0, 1, 2
+            const startSurge = 400 + sqlIndex * 70;
+            const endSurge = 600 + sqlIndex * 50;
+            const surgeStep = (endSurge - startSurge) / 2;
+            return Math.round(startSurge + progressInLastThree * surgeStep + random() * 15);
+          }
         }),
       };
     });
@@ -745,29 +758,29 @@ export default function ReportPage({ params }: ReportPageProps) {
   const solutionSQLTrendData = useMemo(() => {
     const sqlIds = ['atk9xmm7cacqf', '03mksgpbguk26', '9g1h3k6rx2vfy'];
     const pointCount = SOLUTION_TREND_DAYS_RANGE + 1;
+    const lastDayIndex = pointCount - 1; // 마지막 1일
     
     return sqlIds.map((sqlId, sqlIndex) => {
       const random = getSeededRandom(reportSeed * (2000 + sqlIndex * 200));
       
-      // sqlIndex 0, 1은 변동이 크고, sqlIndex 2는 완만
-      const isVolatile = sqlIndex < 2;
-      const baseValue = 250 + sqlIndex * 80;
+      const stableRanges = [
+        { base: 0, range: 50 },     // 첫 번째 SQL: 0~50
+        { base: 50, range: 50 },    // 두 번째 SQL: 50~100
+        { base: 100, range: 50 },   // 세 번째 SQL: 100~150
+      ];
+      
+      const surgeValues = [520, 590, 690]; // 마지막 날 값
       
       return {
         name: sqlId,
         data: Array.from({ length: pointCount }, (_, index) => {
-          if (isVolatile) {
-            // 변동이 큰 라인: 랜덤 변화가 크고 주기적 패턴
-            const wave = Math.sin(index * 0.3) * 120;
-            const noise = (random() - 0.5) * 220;
-            const value = baseValue + wave + noise;
-            return Math.max(100, Math.min(650, Math.round(value)));
+          if (index < lastDayIndex) {
+            // 처음 29일: 안정적인 범위
+            const { base, range } = stableRanges[sqlIndex] ?? stableRanges[0];
+            return Math.round(base + random() * range);
           } else {
-            // 완만한 라인: 변화량 증가, 낮은 값 범위 (0~150)
-            const drift = (index / pointCount) * 20;
-            const noise = (random() - 0.5) * 80;
-            const value = 80 + drift + noise;
-            return Math.max(0, Math.min(180, Math.round(value)));
+            // 마지막 1일: 급증
+            return surgeValues[sqlIndex] ?? 520;
           }
         }),
       };
@@ -981,77 +994,29 @@ export default function ReportPage({ params }: ReportPageProps) {
     });
   }, [reportSeed, avgWaitTimeData]);
 
-  const sqlWaitCountData = useMemo(() => {
+  const sqlElapsedTimeData = useMemo(() => {
     if (chartPointCount === 0) {
       return [];
     }
-    const random = getSeededRandom(reportSeed * 410);
-    const surgeBase = 55 + Math.round(random() * 5);
-    const surgeStep = 9 + Math.round(random() * 4);
+    const random = getSeededRandom(reportSeed * 440);
+    const surgeBase = 72 + Math.round(random() * 6);
+    const surgeStep = 9 + Math.round(random() * 3);
     const lastThreeIndex = Math.max(chartPointCount - 3, 0);
     return Array.from({ length: chartPointCount }, (_, index) => {
       if (index < lastThreeIndex) {
-        return 28 + Math.round(random() * 18);
+        return 36 + Math.round(random() * 20);
       }
       return surgeBase + (index - lastThreeIndex) * surgeStep;
     });
   }, [reportSeed, chartPointCount]);
 
-  const sqlWaitCountBaselineData = useMemo(() => {
-    const random = getSeededRandom(reportSeed * 415);
-    return sqlWaitCountData.map((value) => {
-      const ratio = 0.72 + random() * 0.12;
-      return Math.round(value * ratio);
+  const sqlElapsedTimeBaselineData = useMemo(() => {
+    const random = getSeededRandom(reportSeed * 445);
+    return sqlElapsedTimeData.map((value) => {
+      const ratio = 0.68 + random() * 0.12;
+      return +(value * ratio).toFixed(1);
     });
-  }, [reportSeed, sqlWaitCountData]);
-
-  const sqlAvgSessionData = useMemo(() => {
-    if (chartPointCount === 0) {
-      return [];
-    }
-    const random = getSeededRandom(reportSeed * 420);
-    const surgeBase = 32 + Math.round(random() * 4);
-    const surgeStep = 5 + Math.round(random() * 2);
-    const lastThreeIndex = Math.max(chartPointCount - 3, 0);
-    return Array.from({ length: chartPointCount }, (_, index) => {
-      if (index < lastThreeIndex) {
-        return 18 + Math.round(random() * 10);
-      }
-      return surgeBase + (index - lastThreeIndex) * surgeStep;
-    });
-  }, [reportSeed, chartPointCount]);
-
-  const sqlAvgSessionBaselineData = useMemo(() => {
-    const random = getSeededRandom(reportSeed * 425);
-    return sqlAvgSessionData.map((value) => {
-      const ratio = 0.7 + random() * 0.12;
-      return Math.round(value * ratio);
-    });
-  }, [reportSeed, sqlAvgSessionData]);
-
-  const sqlAvgWaitTimeData = useMemo(() => {
-    if (chartPointCount === 0) {
-      return [];
-    }
-    const random = getSeededRandom(reportSeed * 430);
-    const surgeBase = 4.2 + random() * 0.5;
-    const surgeIncrement = 0.6 + random() * 0.2;
-    const lastThreeIndex = Math.max(chartPointCount - 3, 0);
-    return Array.from({ length: chartPointCount }, (_, index) => {
-      if (index < lastThreeIndex) {
-        return +(2.6 + random() * 0.9).toFixed(2);
-      }
-      return +(surgeBase + (index - lastThreeIndex) * surgeIncrement).toFixed(2);
-    });
-  }, [reportSeed, chartPointCount]);
-
-  const sqlAvgWaitTimeBaselineData = useMemo(() => {
-    const random = getSeededRandom(reportSeed * 435);
-    return sqlAvgWaitTimeData.map((value) => {
-      const ratio = 0.72 + random() * 0.12;
-      return +(value * ratio).toFixed(2);
-    });
-  }, [reportSeed, sqlAvgWaitTimeData]);
+  }, [reportSeed, sqlElapsedTimeData]);
 
   const sqlSummaryEventTime = useMemo(() => {
     if (!chartTimes.length) {
@@ -1559,7 +1524,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                     <span className="text-[12px] text-[#6a7282] leading-[1.4]">
                       * 분석 리포트는 민감도(Sensitivity) 설정에 따라 생성 주기와 발생 가능성이 조정됩니다.
                     </span>
-                    <button className="h-6 px-1 bg-[#f3f4f6] rounded-[6px] flex items-center justify-center gap-[10px] text-[12px] font-medium text-[#1e2939] hover:bg-[#e5e7eb] transition-colors">
+                    <button className="h-6 px-1 bg-[#f3f4f6] rounded-[6px] flex items-center justify-center gap-1 text-[12px] font-medium text-[#1e2939] hover:bg-[#e5e7eb] transition-colors">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M14.3662 3.11528C14.6666 2.95723 15.0265 2.96246 15.3223 3.12895L18.165 4.72856L18.2744 4.79985C18.516 4.98097 18.6647 5.26385 18.6738 5.57035L18.751 8.16703L21.0225 9.54008C21.322 9.72112 21.5048 10.0456 21.5049 10.3955V13.6006C21.5049 13.9511 21.3216 14.2761 21.0215 14.4571L18.751 15.8252L18.6719 18.4239C18.6611 18.7731 18.4682 19.0917 18.1641 19.2637L15.3242 20.8702C15.0281 21.0377 14.6673 21.0432 14.3662 20.8848L11.998 19.6387L9.63086 20.8848C9.33049 21.0428 8.97057 21.0376 8.6748 20.8711L5.83203 19.2715C5.52661 19.0996 5.33365 18.7801 5.32324 18.4297L5.24512 15.8321L2.97363 14.459C2.67392 14.278 2.4903 13.9537 2.49023 13.6036V10.3985C2.49023 10.0481 2.6736 9.72304 2.97363 9.54203L5.24414 8.17289L5.32422 5.57524L5.33691 5.44535C5.38523 5.14816 5.56586 4.8858 5.83203 4.73539L8.67285 3.12895L8.78711 3.07426C9.05855 2.96336 9.3676 2.97676 9.63086 3.11528L11.998 4.36039L14.3662 3.11528ZM12.4639 6.37602C12.1725 6.52914 11.8245 6.52919 11.5332 6.37602L9.18262 5.13871L7.30566 6.19926L7.22656 8.77836C7.21612 9.11772 7.0339 9.4292 6.74316 9.60453L4.49023 10.9629V13.0391L6.74609 14.4024L6.85059 14.4737C7.08023 14.6555 7.21969 14.9315 7.22852 15.2286L7.30469 17.8047L9.18066 18.8614L11.5332 17.6241L11.6445 17.5743C11.9104 17.4735 12.2088 17.49 12.4639 17.6241L14.8145 18.8604L16.6895 17.7998L16.7686 15.2207L16.7812 15.0948C16.8271 14.8056 16.9976 14.548 17.252 14.3946L19.5049 13.0362V10.959L17.251 9.5977C16.9603 9.42208 16.7786 9.111 16.7686 8.77153L16.6914 6.19438L14.8154 5.13774L12.4639 6.37602ZM13.999 12C13.999 10.8956 13.1034 10.0003 11.999 10C10.8945 10 9.99902 10.8955 9.99902 12C9.99902 13.1046 10.8945 14 11.999 14C13.1034 13.9998 13.999 13.1045 13.999 12ZM15.999 12C15.999 14.209 14.208 15.9998 11.999 16C9.78988 16 7.99902 14.2092 7.99902 12C7.99902 9.7909 9.78988 8.00004 11.999 8.00004C14.208 8.00028 15.999 9.79105 15.999 12Z" fill="#1E2939"/>
                       </svg>
@@ -1969,7 +1934,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                                             return (
                                               <th
                                                 key={header.id}
-                                                className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${headerIndex !== headers.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center`}
+                                                className={`bg-[#f3f4f6] border-b border-[#e5e7eb] ${headerIndex !== headers.length - 1 ? 'border-r border-[#e5e7eb]' : ''} px-3 py-3 text-[14px] font-semibold text-[#030712] text-center whitespace-nowrap`}
                                                 style={{ width: width }}
                                               >
                                                 {flexRender(header.column.columnDef.header, header.getContext())}
@@ -2414,23 +2379,23 @@ ORDER  BY sequence_name;`}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 gap-4 mb-6">
                   <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
                     <div className="flex items-center h-6 justify-between">
-                      <span className="text-sm font-medium text-[#030712]">Wait Count</span>
+                      <span className="text-sm font-medium text-[#030712]">SQL Elapsed Time</span>
                       <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
                         <span className="flex items-center gap-1">
                           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_PRIMARY }} />
-                          Top SQL
+                          Total SQL Elapsed Time
                         </span>
                         <span className="flex items-center gap-1">
                           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_SECONDARY }} />
-                          Baseline
+                          Top 5 SQL
                         </span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <div className="flex gap-2 h-[180px]">
+                      <div className="flex gap-2 h-[200px]">
                         <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
                           <span>90</span>
                           <span>70</span>
@@ -2440,88 +2405,12 @@ ORDER  BY sequence_name;`}
                         </div>
                         <div className="flex-1">
                           <ReactECharts
-                            key={`sql-wait-count-${reportIdentifier}`}
+                            key={`sql-elapsed-time-${reportIdentifier}`}
                             option={getLineChartOption(chartTimes, [
-                              { name: 'Top SQL', data: sqlWaitCountData, color: CHART_COLOR_SQL_PRIMARY },
-                              { name: 'Baseline', data: sqlWaitCountBaselineData, color: CHART_COLOR_SQL_SECONDARY },
+                              { name: 'Total SQL Elapsed Time', data: sqlElapsedTimeData, color: CHART_COLOR_SQL_PRIMARY },
+                              { name: 'Top 5 SQL', data: sqlElapsedTimeBaselineData, color: CHART_COLOR_SQL_SECONDARY },
                             ], false, true)}
-                            style={{ height: '180px', width: '100%' }}
-                            opts={{ renderer: 'svg' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
-                    <div className="flex items-center h-6 justify-between">
-                      <span className="text-sm font-medium text-[#030712]">AVG Session</span>
-                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
-                        <span className="flex items-center gap-1">
-                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_PRIMARY }} />
-                          Top SQL
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_SECONDARY }} />
-                          Baseline
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex gap-2 h-[180px]">
-                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
-                          <span>48</span>
-                          <span>36</span>
-                          <span>24</span>
-                          <span>12</span>
-                          <span>0</span>
-                        </div>
-                        <div className="flex-1">
-                          <ReactECharts
-                            key={`sql-avg-session-${reportIdentifier}`}
-                            option={getLineChartOption(chartTimes, [
-                              { name: 'Top SQL', data: sqlAvgSessionData, color: CHART_COLOR_SQL_PRIMARY },
-                              { name: 'Baseline', data: sqlAvgSessionBaselineData, color: CHART_COLOR_SQL_SECONDARY },
-                            ], false, true)}
-                            style={{ height: '180px', width: '100%' }}
-                            opts={{ renderer: 'svg' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 border border-[#e5e7eb] rounded-[6px] bg-white p-4">
-                    <div className="flex items-center h-6 justify-between">
-                      <span className="text-sm font-medium text-[#030712]">AVG Wait Time</span>
-                      <div className="flex items-center gap-3 text-[11px] text-[#6a7282]">
-                        <span className="flex items-center gap-1">
-                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_PRIMARY }} />
-                          Top SQL
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLOR_SQL_SECONDARY }} />
-                          Baseline
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex gap-2 h-[180px]">
-                        <div className="flex flex-col justify-between text-right text-[11px] text-[#6a7282] w-8">
-                          <span>6.0</span>
-                          <span>5.0</span>
-                          <span>4.0</span>
-                          <span>3.0</span>
-                          <span>2.0</span>
-                        </div>
-                        <div className="flex-1">
-                          <ReactECharts
-                            key={`sql-avg-wait-time-${reportIdentifier}`}
-                            option={getLineChartOption(chartTimes, [
-                              { name: 'Top SQL', data: sqlAvgWaitTimeData, color: CHART_COLOR_SQL_PRIMARY },
-                              { name: 'Baseline', data: sqlAvgWaitTimeBaselineData, color: CHART_COLOR_SQL_SECONDARY },
-                            ], false, true)}
-                            style={{ height: '180px', width: '100%' }}
+                            style={{ height: '200px', width: '100%' }}
                             opts={{ renderer: 'svg' }}
                           />
                         </div>
@@ -2561,6 +2450,9 @@ ORDER  BY sequence_name;`}
                           [SELECT COUNT(*) FROM SALES...]
                         </span>
                       </div>
+                    </div>
+                    <div className="bg-[#FFE2E2] text-[12px] font-medium text-[#E7000B] px-2 py-1 rounded-[6px]">
+                      영향도 94%
                     </div>
                   </button>
 
@@ -2646,6 +2538,9 @@ ORDER  BY sequence_name;`}
                         </span>
                       </div>
                     </div>
+                    <div className="bg-[#dcfce7] text-[12px] font-medium text-[#00a63e] px-2 py-1 rounded-[6px]">
+                      영향도 1.3%
+                    </div>
                   </button>
 
                   {/* 내용 - 조건부 렌더링 */}
@@ -2729,6 +2624,9 @@ ORDER  BY sequence_name;`}
                           [SELECT * FROM ORDERS WHERE ...]
                         </span>
                       </div>
+                    </div>
+                    <div className="bg-[#dcfce7] text-[12px] font-medium text-[#00a63e] px-2 py-1 rounded-[6px]">
+                      영향도 0.7%
                     </div>
                   </button>
 
