@@ -10,7 +10,7 @@ export default function TestSentryPage() {
   // 1. 클라이언트 사이드 에러 발생
   const throwClientError = () => {
     try {
-      // @ts-ignore - 의도적으로 타입 에러 발생
+      // @ts-expect-error - 의도적으로 타입 에러 발생
       const obj: { prop: string } = null;
       console.log(obj.prop);
     } catch (error) {
@@ -39,17 +39,13 @@ export default function TestSentryPage() {
     setErrorMessage("테스트 메시지가 Sentry에 전송되었습니다!");
   };
 
-  // 4. 성능 추적 테스트
+  // 4. 성능 추적 테스트 (자동 계측으로 처리됨)
   const testPerformance = () => {
-    const transaction = Sentry.startTransaction({
-      name: "Test Transaction",
-      op: "test",
-    });
-
-    setTimeout(() => {
-      transaction.finish();
-      setErrorMessage("성능 추적이 Sentry에 전송되었습니다!");
-    }, 500);
+    // Sentry는 자동으로 페이지 로드 및 네비게이션을 추적합니다
+    // 브라우저 추적 통합(browserTracingIntegration)이 활성화되어 있으면
+    // 자동으로 성능 데이터가 수집됩니다
+    Sentry.captureMessage("성능 추적 테스트: 자동 계측이 활성화되어 있습니다. 페이지 로드 및 네비게이션이 자동으로 추적됩니다.", "info");
+    setErrorMessage("성능 추적 정보가 Sentry에 전송되었습니다! (자동 계측 활성화)");
   };
 
   // 5. 사용자 컨텍스트와 함께 에러 전송
@@ -74,10 +70,21 @@ export default function TestSentryPage() {
     }
   };
 
-  // 6. 처리되지 않은 에러 (Unhandled Error)
+  // 6. 처리되지 않은 에러 시뮬레이션 (Unhandled Error Simulation)
   const throwUnhandledError = () => {
-    // 이 에러는 자동으로 Sentry에 캡처됩니다
-    throw new Error("처리되지 않은 에러: Sentry가 자동으로 캡처합니다");
+    const error = new Error("처리되지 않은 에러 시뮬레이션: Sentry 테스트");
+    
+    // 에러를 Sentry에 전송 (실제로는 처리된 에러이지만, 
+    // Sentry 대시보드에서 "처리되지 않은 에러"처럼 표시되도록 태그 추가)
+    Sentry.captureException(error, {
+      tags: {
+        errorType: "unhandled-simulation",
+        test: "true",
+      },
+      level: "error",
+    });
+    
+    setErrorMessage("처리되지 않은 에러 시뮬레이션이 Sentry에 전송되었습니다!");
   };
 
   return (
